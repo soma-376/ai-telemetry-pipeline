@@ -1,0 +1,11 @@
+.git
+.github
+.idea
+.claude
+data
+analysis
+__pycache__
+*.pyc
+docker-compose*.yml
+Dockerfile
+README.md
