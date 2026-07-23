@@ -1,0 +1,16 @@
+/.claude
+
+# Collected telemetry data (runtime output, not source)
+/data/*
+
+# Analysis generated artifacts (runtime output)
+/analysis/report.json
+/analysis/history.jsonl
+
+# Python
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+*.swp
