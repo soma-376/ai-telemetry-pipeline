@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from diagnostics.checks import report_empty_mapping
 from ...common.call_id import synth_call_id
 from ...common.context import IngestContext
 from ...common.envelope import build_envelope, build_ingest, finalize
@@ -128,15 +129,27 @@ def to_event(
 
     if short == "api_request":
         cost = _opt_float(attrs, "cost_usd")
+        tokens = Tokens(
+            input=_opt_int(attrs, "input_tokens"),
+            output=_opt_int(attrs, "output_tokens"),
+            cache_read=_opt_int(attrs, "cache_read_tokens"),
+            cache_create=_opt_int(attrs, "cache_creation_tokens"),
+        )
+        if tokens.billable == 0:
+            report_empty_mapping(
+                ctx.diagnostics,
+                adapter=ADAPTER,
+                event_name=name,
+                target_field="payload.tokens",
+                source_record_id=ctx.raw_record_id,
+                signal=ctx.signal_type.value,
+                timestamp=ts,
+                source_values=attrs,
+            )
         ev.type = LogKind.LLM_CALL
         ev.payload = LlmCall(
             model=_opt_str(attrs, keys=("model",)),
-            tokens=Tokens(
-                input=_opt_int(attrs, "input_tokens"),
-                output=_opt_int(attrs, "output_tokens"),
-                cache_read=_opt_int(attrs, "cache_read_tokens"),
-                cache_create=_opt_int(attrs, "cache_creation_tokens"),
-            ),
+            tokens=tokens,
             cost_usd=cost,
             # CC 는 세 툴 중 유일하게 USD 를 직접 준다.
             cost_source=(

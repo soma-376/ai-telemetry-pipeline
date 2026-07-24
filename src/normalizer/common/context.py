@@ -6,8 +6,9 @@
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from diagnostics import DiagnosticReporter, NullReporter
 from ..model import SignalType
 
 
@@ -16,3 +17,4 @@ class IngestContext:
     tenant_id: str | None  # 콜렉터가 인증 자격증명에서 스탬프. 없으면 None
     raw_record_id: str  # 원본 레코드 참조 ID 또는 payload hash
     signal_type: SignalType = SignalType.LOG
+    diagnostics: DiagnosticReporter = field(default_factory=NullReporter)

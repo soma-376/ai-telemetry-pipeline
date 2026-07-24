@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+from diagnostics.checks import report_empty_mapping, report_invariant_failure
 from ...common.call_id import synth_call_id
 from ...common.context import IngestContext
 from ...common.envelope import build_envelope, build_ingest, finalize
@@ -137,6 +138,34 @@ def to_event(
             ),
             total_reported=_opt_int(attrs, "total_tokens"),
         )
+        if tokens.billable == 0 and tokens.total_reported is None:
+            report_empty_mapping(
+                ctx.diagnostics,
+                adapter=ADAPTER,
+                event_name=name,
+                target_field="payload.tokens",
+                source_record_id=ctx.raw_record_id,
+                signal=ctx.signal_type.value,
+                timestamp=ts,
+                source_values=attrs,
+            )
+        elif tokens.reconciles() is False:
+            report_invariant_failure(
+                ctx.diagnostics,
+                adapter=ADAPTER,
+                event_name=name,
+                source_record_id=ctx.raw_record_id,
+                signal=ctx.signal_type.value,
+                timestamp=ts,
+                message="total_reported does not equal billable tokens",
+                source_values={
+                    "input": tokens.input,
+                    "output": tokens.output,
+                    "cache_read": tokens.cache_read,
+                    "cache_create": tokens.cache_create,
+                    "total_reported": tokens.total_reported,
+                },
+            )
         if tokens.billable > 0 or tokens.total_reported is not None:
             model = _opt_str(attrs, res_attrs, keys=("model",))
             cost_usd = (
