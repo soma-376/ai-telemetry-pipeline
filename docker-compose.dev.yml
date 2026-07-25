@@ -1,4 +1,10 @@
 services:
+  processor:
+    build: .
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel-collector-config.yaml"]
@@ -11,6 +17,6 @@ services:
     ports:
       - "4317:4317"
       - "4318:4318"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      - processor
     restart: unless-stopped
