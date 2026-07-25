@@ -4,7 +4,10 @@ services:
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
-      - ./data:/data
+      # 제품별 bind mount를 따로 두면 빈 data 하위 디렉터리도 Compose가
+      # 시작 시 생성하므로 file exporter가 부모 경로 부재로 실패하지 않는다.
+      - ./data/codex:/data/codex
+      - ./data/claude_code:/data/claude_code
     ports:
       - "4317:4317"
       - "4318:4318"

@@ -6,12 +6,14 @@ CLI 코딩 툴(Claude Code / Codex …)의 OTLP 텔레메트리를 읽어 **세�
 ## 데이터 흐름
 
 ```
-CLI 툴 ──OTLP──▶ collector ──┬─ file/{logs,metrics,traces} ▶ data/*.jsonl              (원본 아카이브)
+CLI 툴 ──OTLP──▶ collector ──┬─ file/{logs,metrics,traces} ▶ data/{codex,claude_code}/*.jsonl
+                             │                               (제품별 원본 아카이브)
                              └─ otlphttp(json)             ▶ normalize ▶ enrichment
                                                              (otlp_receiver.py, 실시간 스키마)
 ```
 
-- **원본 아카이브** `data/{logs,metrics,traces}.jsonl` — collector의 file exporter가 그대로 append. 보존용.
+- **원본 아카이브** `data/{codex,claude_code}/{logs,metrics,traces}.jsonl` — collector가
+  resource의 `service.name`을 기준으로 제품별 파일에 append. 보존용.
 - **처리 스트림** — collector가 `otlphttp`(encoding: json)로 push한 OTLP를
   `src/otlp_receiver.py`가 받아 정규화한 뒤 enrichment에 함수 스트림으로 전달한다.
   enrichment 이후의 영속화 단계는 아직 연결하지 않았다.

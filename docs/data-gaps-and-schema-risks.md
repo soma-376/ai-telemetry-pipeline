@@ -6,7 +6,8 @@
 
 ### 1.1 정규화 결과가 어디에도 저장되지 않는다
 `otlp_receiver.py:43` — `for _event in process(...): pass`. enrichment까지 계산한 뒤 전부 버린다.
-원본 아카이브(`data/*.jsonl`)만 남고, 정규화 스트림은 휘발. README에 명시된 한계지만
+원본 아카이브(`data/{codex,claude_code}/*.jsonl`)만 남고, 정규화 스트림은 휘발.
+README에 명시된 한계지만
 사실상 파이프라인의 최종 산출물이 0건이다.
 
 ### 1.2 배치 내 레코드 1건만 깨져도 배치 전체가 영구 유실된다

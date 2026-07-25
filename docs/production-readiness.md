@@ -8,7 +8,8 @@
 - enrichment 뒤에 저장 스테이지를 붙인다. 추천: **SQLite/DuckDB로 시작 → 규모 커지면 ClickHouse/Postgres**.
 - `record_id`가 이미 결정적(idempotent)이므로 **`INSERT ... ON CONFLICT (record_id) DO NOTHING`** 만으로
   재시도·replay 중복이 공짜로 해결된다. 이 설계 자산을 지금 활용해야 한다.
-- 원본 아카이브(`data/*.jsonl`)를 읽어 같은 `process()`에 흘리는 **backfill 스크립트** 한 개
+- 원본 아카이브(`data/{codex,claude_code}/*.jsonl`)를 읽어 같은 `process()`에 흘리는
+  **backfill 스크립트** 한 개
   (README에 이미 계획된 항목) — 장애 복구·스키마 재정규화의 기반.
 
 ### 2. 오류 격리 (배치 전체 유실 차단)
@@ -48,7 +49,8 @@ processors: [memory_limiter, redaction/secrets, batch]  # metrics에도 redactio
   현재 구조는 누구나 남의 tenant로 위장 가능.
 
 ### 8. 테스트 + CI
-- 지금 테스트가 0개다. `data/*.jsonl`에 실데이터가 이미 있으니 **골든 파일 테스트**부터:
+- 지금 테스트가 0개다. `data/{codex,claude_code}/*.jsonl`에 실데이터가 쌓이므로
+  **골든 파일 테스트**부터:
   원시 push → 정규화 JSON 스냅샷 비교. 어댑터 회귀를 즉시 잡는다.
 - `finalize()` 멱등성(같은 입력 → 같은 record_id) property 테스트.
 - GitHub Actions로 lint(ruff) + 테스트. `.github/` 템플릿은 있는데 워크플로가 없다.
