@@ -43,7 +43,7 @@ docker compose -f docker-compose.dev.yml up
 src/
   otlp_receiver.py        OTLP/HTTP 진입점
   processor.py            normalize → enrich 스트림 조립
-  diagnostics/            누락·정합성 진단 JSONL 기록 및 집계
+  diagnostics/            누락·정합성 인메모리 집계 및 JSON 스냅샷
   normalizer/             원시 OTLP → Normalized{Log,Span,Metric} 정규화 패키지
   model/                  공통 스키마 (enums + 메시지). 순수 데이터
   otlp/                   OTLP 파싱 공용 유틸 (툴 무관). readers.py = 3 시그널 리더
@@ -62,12 +62,8 @@ teams.json              이메일 → 팀 매핑 (저장소 루트)
 `Normalized` 스트림을 `enrich(events)`에 그대로 전달한다. 현재 정규화기는 `call_id`
 페어링을 위해 OTLP push 한 건만 내부 버퍼링하고, 그 이후 단계에는 이벤트를 하나씩 전달한다.
 
-진단 로그는 기본적으로 `data/diagnostics/events.jsonl`에 기록된다. 인식하지 못한 이벤트,
-토큰 매핑 누락, 토큰 합계 불일치만 구조화 로그로 남기며 다음 명령으로 집계한다.
-
 ```bash
-python src/otlp_receiver.py --diagnostics data/diagnostics/events.jsonl
-python src/diagnostics/report.py data/diagnostics/events.jsonl
+python src/otlp_receiver.py
 ```
 
 **Normalized{Log,Span,Metric}** = `model/event.py`의 신호별 스키마. 셋이 공통 **`Envelope`**

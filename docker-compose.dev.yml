@@ -1,6 +1,9 @@
 services:
   processor:
     build: .
+    command:
+      - python
+      - otlp_receiver.py
     ports:
       - "8080:8080"
     restart: unless-stopped

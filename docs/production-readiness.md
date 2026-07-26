@@ -59,7 +59,8 @@ processors: [memory_limiter, redaction/secrets, batch]  # metrics에도 redactio
 
 ### 9. 파이프라인 자체의 관측
 - 리시버가 자기 메트릭을 노출: 수신/정규화/OTHER/진단 카운트, 처리 지연.
-- 진단 JSONL 집계(`diagnostics/report.py`)를 크론 또는 대시보드로 — `mapping_miss` 비율이
+- 진단 스냅샷 생성(`python src/diagnostics/report.py`)을 크론 또는 대시보드로 —
+  `mapping_miss` 비율이
   임계 초과하면 알림 (Codex to-spec 검증이 여기서 끝난다).
 - 어댑터 미분기 이벤트(`LogKind.OTHER`)도 진단 이벤트를 발화하도록 수정 — 신규 이벤트 감지용.
 

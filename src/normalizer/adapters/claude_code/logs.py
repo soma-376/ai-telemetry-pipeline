@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from diagnostics.checks import report_empty_mapping
 from ...common.call_id import synth_call_id
 from ...common.context import IngestContext
 from ...common.envelope import build_envelope, build_ingest, finalize
@@ -100,7 +99,7 @@ _CLAUDE_DECISION_VALUE_MAP: dict[str, Decision] = {
 
 def to_event(
     res_attrs: dict, rec: dict, attrs: dict, name: str, ctx: IngestContext
-) -> NormalizedLog:
+) -> NormalizedLog | None:
     short = name.replace("claude_code.", "")
 
     identity = build_identity(res_attrs, attrs, ctx.tenant_id)
@@ -135,17 +134,6 @@ def to_event(
             cache_read=_opt_int(attrs, "cache_read_tokens"),
             cache_create=_opt_int(attrs, "cache_creation_tokens"),
         )
-        if tokens.billable == 0:
-            report_empty_mapping(
-                ctx.diagnostics,
-                adapter=ADAPTER,
-                event_name=name,
-                target_field="payload.tokens",
-                source_record_id=ctx.raw_record_id,
-                signal=ctx.signal_type.value,
-                timestamp=ts,
-                source_values=attrs,
-            )
         ev.type = LogKind.LLM_CALL
         ev.payload = LlmCall(
             model=_opt_str(attrs, keys=("model",)),
@@ -299,5 +287,8 @@ def to_event(
             length=_opt_int(attrs, "prompt_length"),
             command_name=_opt_str(attrs, keys=("command_name",)),
         )
+
+    else:
+        return None
 
     return finalize(ev)

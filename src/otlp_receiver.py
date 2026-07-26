@@ -16,16 +16,30 @@ import argparse
 import gzip
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 
-from diagnostics import JsonlReporter
+from diagnostics import AggregatingReporter
 from processor import process
 
 _SIGNAL_PATHS = {"/v1/logs", "/v1/traces", "/v1/metrics"}
 
 
 class OTLPHandler(BaseHTTPRequestHandler):
-    diagnostics: JsonlReporter
+    diagnostics: AggregatingReporter
+
+    def do_GET(self):
+        if self.path != "/diagnostics":
+            self.send_error(404, "unknown path")
+            return
+        payload = json.dumps(
+            self.diagnostics.snapshot(),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
     def do_POST(self):
         if self.path not in _SIGNAL_PATHS:
@@ -40,7 +54,10 @@ class OTLPHandler(BaseHTTPRequestHandler):
         try:
             # Generator stages are lazy, so consume the stream to execute the
             # normalize/enrichment flow.
-            for _event in process(json.loads(body), diagnostics=self.diagnostics):
+            for _event in process(
+                json.loads(body),
+                diagnostics=self.diagnostics,
+            ):
                 pass
         except Exception as exc:  # noqa: BLE001 — 잘못된 배치는 400 으로 돌려보냄
             self.send_error(400, f"parse error: {exc}")
@@ -62,15 +79,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="OTLP/HTTP JSON ingestion receiver")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
-    parser.add_argument(
-        "--diagnostics",
-        type=Path,
-        default=Path("data/diagnostics.jsonl"),
-        help="진단 JSONL 경로",
-    )
     args = parser.parse_args()
 
-    OTLPHandler.diagnostics = JsonlReporter(args.diagnostics)
+    OTLPHandler.diagnostics = AggregatingReporter()
     server = ThreadingHTTPServer((args.host, args.port), OTLPHandler)
     print(
         f"OTLP receiver listening on {args.host}:{args.port}",
@@ -80,8 +91,6 @@ def main() -> None:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
-    finally:
-        OTLPHandler.diagnostics.close()
 
 
 if __name__ == "__main__":

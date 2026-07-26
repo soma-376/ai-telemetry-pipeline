@@ -13,8 +13,6 @@ class DiagnosticEvent:
     signal: str
     adapter: str | None = None
     event_name: str | None = None
-    target_field: str | None = None
-    timestamp: float | None = None
     source_values: dict[str, Any] = field(default_factory=dict)
     message: str | None = None
 

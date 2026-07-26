@@ -5,14 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
 
 from diagnostics import (
-    DiagnosticEvent,
+    Diagnostics,
     DiagnosticReporter,
     NullReporter,
-    TrackingAttrs,
+    Observation,
 )
-from diagnostics.checks import report_unmapped_fields
 from .common.call_id import pair_call_ids
 from .common.context import IngestContext
 from .model import Normalized
@@ -20,6 +20,15 @@ from .otlp.readers import read_all
 from .adapters import claude_code, codex
 
 _SOURCES = (claude_code, codex)
+
+
+@dataclass(frozen=True)
+class AdapterOutcome:
+    """어댑터 매칭 결과와 정규화된 이벤트를 함께 보존한다."""
+
+    adapter: str | None
+    event_name: str | None
+    event: Normalized | None
 
 
 def _raw_record_id(rec: dict) -> str:
@@ -33,7 +42,7 @@ def _to_event(
     attrs: dict,
     name: str,
     ctx: IngestContext,
-) -> Normalized | None:
+) -> AdapterOutcome:
     for source in _SOURCES:
         event_name = source.match(
             res_attrs,
@@ -43,19 +52,18 @@ def _to_event(
             ctx.signal_type,
         )
         if event_name is not None:
-            # in-scope 확정. 이 순간부터만 추적 dict 로 감싸 안 읽은 키를 잡는다.
-            tracked = TrackingAttrs(attrs)
-            event = source.to_event(res_attrs, rec, tracked, event_name, ctx)
-            report_unmapped_fields(
-                ctx.diagnostics,
+            event = source.to_event(res_attrs, rec, attrs, event_name, ctx)
+            return AdapterOutcome(
                 adapter=source.ADAPTER,
                 event_name=event_name,
-                source_record_id=ctx.raw_record_id,
-                signal=ctx.signal_type.value,
-                tracked=tracked,
+                event=event,
             )
-            return event
-    return None
+
+    return AdapterOutcome(
+        adapter=None,
+        event_name=name or None,
+        event=None,
+    )
 
 
 def normalize(
@@ -69,7 +77,7 @@ def normalize(
     """
     events: list[Normalized] = []
     reporter = diagnostics or NullReporter()
-
+    diagnostics_engine = Diagnostics(reporter)
     for res_attrs, rec, attrs, name, signal_type in read_all(doc):
         tenant_id = res_attrs.get("tenant.id")
         ctx = IngestContext(
@@ -78,20 +86,27 @@ def normalize(
             signal_type=signal_type,
             diagnostics=reporter,
         )
-        event = _to_event(res_attrs, rec, attrs, name, ctx)
-        if event is not None:
-            events.append(event)
-        else:
-            reporter.report(
-                DiagnosticEvent(
-                    issue_type="unknown_event",
-                    event_name=name or None,
-                    source_record_id=ctx.raw_record_id,
-                    signal=signal_type.value,
-                    source_values=attrs,
-                    message="No adapter matched the OTLP record",
-                )
+        outcome = _to_event(res_attrs, rec, attrs, name, ctx)
+
+        # 제품 namespace 밖의 레코드는 처리하지 않는다.
+        if outcome.adapter is None:
+            continue
+
+        # 제품 namespace에 속한 모든 이벤트를 진단한다.
+        diagnostics_engine.inspect(
+            Observation(
+                adapter=outcome.adapter,
+                signal=signal_type.value,
+                event_name=outcome.event_name,
+                source_record_id=ctx.raw_record_id,
+                normalized_event=outcome.event,
+                source_values=attrs,
             )
+        )
+
+        # 정규화에 성공한 이벤트만 downstream으로 전달한다.
+        if outcome.event is not None:
+            events.append(outcome.event)
 
     pair_call_ids(events)
     yield from events
