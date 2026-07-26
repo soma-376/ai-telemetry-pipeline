@@ -7,6 +7,39 @@ from typing import Any
 
 
 @dataclass(frozen=True)
+class Observation:
+    """Facts supplied by a normalizer or adapter for diagnostics inspection."""
+
+    adapter: str
+    signal: str
+    event_name: str | None
+    source_record_id: str
+    normalized_event: Any | None
+    source_values: dict[str, Any] = field(default_factory=dict)
+    accessed_keys: frozenset[str] = field(default_factory=frozenset)
+    mapping_results: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Issue:
+    """An issue detected from an observation."""
+
+    issue_type: str
+    subject: str | None = None
+    keys: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Finding:
+    """A detected issue classified with its specific reason."""
+
+    issue: str
+    reason: str
+    subject: str | None = None
+    keys: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class DiagnosticEvent:
     issue_type: str
     source_record_id: str

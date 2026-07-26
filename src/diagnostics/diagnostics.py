@@ -8,44 +8,11 @@ from the existing diagnostics modules.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
-
-from .model import DiagnosticEvent
+from .model import DiagnosticEvent, Finding, Issue, Observation
 from .reporter import DiagnosticReporter, NullReporter
 
 
-@dataclass(frozen=True)
-class Observation:
-    """Facts supplied by a normalizer or adapter for diagnostics inspection."""
-
-    adapter: str
-    signal: str
-    event_name: str | None
-    source_record_id: str
-    normalized_event: Any | None
-    source_values: dict[str, Any] = field(default_factory=dict)
-    accessed_keys: frozenset[str] = field(default_factory=frozenset)
-    mapping_results: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class Issue:
-    """관찰 데이터에서 먼저 판별된 이슈."""
-
-    issue_type: str
-    subject: str | None = None
-    keys: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class Finding:
-    """이슈와 구체적인 원인까지 판별된 최종 발견 결과."""
-
-    issue: str
-    reason: str
-    subject: str | None = None
-    keys: tuple[str, ...] = ()
+_ROUTING_KEYS = frozenset({"event.name"})
 
 
 class Diagnostics:
@@ -145,7 +112,12 @@ class Diagnostics:
 
     def _find_unmapped_fields(self, observation: Observation) -> tuple[str, ...]:
         """소스에 존재하지만 정규화 과정에서 읽히지 않은 키를 찾는다."""
-        return ()
+        unmapped_keys = (
+            observation.source_values.keys()
+            - observation.accessed_keys
+            - _ROUTING_KEYS
+        )
+        return tuple(sorted(unmapped_keys))
 
     def _detect_unknown_event_reason(
         self, observation: Observation, issue: Issue

@@ -12,6 +12,7 @@ from diagnostics import (
     DiagnosticReporter,
     NullReporter,
     Observation,
+    TrackingAttrs,
 )
 from .common.call_id import pair_call_ids
 from .common.context import IngestContext
@@ -29,6 +30,7 @@ class AdapterOutcome:
     adapter: str | None
     event_name: str | None
     event: Normalized | None
+    accessed_keys: frozenset[str] = frozenset()
 
 
 def _raw_record_id(rec: dict) -> str:
@@ -52,11 +54,19 @@ def _to_event(
             ctx.signal_type,
         )
         if event_name is not None:
-            event = source.to_event(res_attrs, rec, attrs, event_name, ctx)
+            tracked = TrackingAttrs(attrs)
+            event = source.to_event(
+                res_attrs,
+                rec,
+                tracked,
+                event_name,
+                ctx,
+            )
             return AdapterOutcome(
                 adapter=source.ADAPTER,
                 event_name=event_name,
                 event=event,
+                accessed_keys=frozenset(tracked.accessed),
             )
 
     return AdapterOutcome(
@@ -101,6 +111,7 @@ def normalize(
                 source_record_id=ctx.raw_record_id,
                 normalized_event=outcome.event,
                 source_values=attrs,
+                accessed_keys=outcome.accessed_keys,
             )
         )
 
