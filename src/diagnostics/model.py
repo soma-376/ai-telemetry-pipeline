@@ -18,6 +18,7 @@ class Observation:
     source_values: dict[str, Any] = field(default_factory=dict)
     accessed_keys: frozenset[str] = field(default_factory=frozenset)
     mapping_results: dict[str, Any] = field(default_factory=dict)
+    mapping_reasons: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,8 @@ class DiagnosticEvent:
     signal: str
     adapter: str | None = None
     event_name: str | None = None
+    target_field: str | None = None
+    keys: tuple[str, ...] = ()
     source_values: dict[str, Any] = field(default_factory=dict)
     message: str | None = None
 

@@ -16,12 +16,17 @@ class _Aggregate:
 
 
 def _classification(event: DiagnosticEvent) -> tuple[str, str, tuple[str, ...]]:
-    """Return the aggregation fields for an unknown event."""
-    return (
-        event.message or "unsupported_event_name",
-        "event_name",
-        (event.event_name or "(unnamed)",),
-    )
+    """Return the aggregation fields for every diagnostic issue type."""
+    reason = event.message or "unclassified"
+    if event.issue_type == "unknown_event":
+        return reason, "event_name", (event.event_name or "(unnamed)",)
+    if event.issue_type in ("mapping_miss", "invariant_failure"):
+        return reason, "target_field", (
+            event.target_field or "(unspecified)",
+        )
+    if event.issue_type == "unmapped_fields":
+        return reason, "source_key", event.keys
+    return reason, "issue", (event.issue_type,)
 
 
 class AggregatingReporter:
@@ -34,9 +39,6 @@ class AggregatingReporter:
         self._lock = threading.Lock()
 
     def report(self, event: DiagnosticEvent) -> None:
-        if event.issue_type != "unknown_event":
-            return
-
         reason, breakdown_by, items = _classification(event)
         group_key = (
             event.adapter,

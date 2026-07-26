@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from diagnostics import (
     Diagnostics,
@@ -31,6 +31,8 @@ class AdapterOutcome:
     event_name: str | None
     event: Normalized | None
     accessed_keys: frozenset[str] = frozenset()
+    mapping_results: dict[str, object] = field(default_factory=dict)
+    mapping_reasons: dict[str, str] = field(default_factory=dict)
 
 
 def _raw_record_id(rec: dict) -> str:
@@ -67,6 +69,8 @@ def _to_event(
                 event_name=event_name,
                 event=event,
                 accessed_keys=frozenset(tracked.accessed),
+                mapping_results=dict(tracked.mapping_results),
+                mapping_reasons=dict(tracked.mapping_reasons),
             )
 
     return AdapterOutcome(
@@ -112,6 +116,8 @@ def normalize(
                 normalized_event=outcome.event,
                 source_values=attrs,
                 accessed_keys=outcome.accessed_keys,
+                mapping_results=outcome.mapping_results,
+                mapping_reasons=outcome.mapping_reasons,
             )
         )
 
