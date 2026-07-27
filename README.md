@@ -78,7 +78,7 @@ payload만 각자 갖는다:
 
 지원 툴: **Claude Code**(`claude_code.*`), **Codex**(`codex.*`).
 Codex adapter는 공식 문서 스키마 기준 **to-spec** — 토큰 키명 등은 실데이터로 재확인 필요.
-확인 방법: 실데이터를 흘린 뒤 `_ingest.raw`에 뭐가 쌓이는지 본다. 거기 남은 게 승격 후보다.
+확인 방법: 실데이터를 흘린 뒤 diagnostics의 `unmapped_fields` 집계를 확인한다.
 
 ### 이 모델에서 꼭 지켜야 할 3가지
 
@@ -111,7 +111,7 @@ Codex adapter는 공식 문서 스키마 기준 **to-spec** — 토큰 키명 �
 ## 한계 (설계상 감수)
 
 - 토큰 귀속·세그먼트 경계는 휴리스틱 근사
-- Codex 토큰 키명은 to-spec — 실데이터 연결 시 `_ingest.raw`로 후보 키 확인
+- Codex 토큰 키명은 to-spec — 실데이터 연결 시 diagnostics의 미매핑 키 집계로 후보 확인
 - `src/normalizer/pricing.py` 단가는 **자리표시자** — 실제 가격표로 갱신 필요 (캐시 절감액은 러프한 추정)
 - 원문 미사용이라 "의도(why)"의 세밀한 라벨은 Phase 2(클라이언트 hook)에서
 - **메트릭 매퍼 미완** — 리시버는 세 신호를 다 받지만 metrics 어댑터가 아직 스텁이라

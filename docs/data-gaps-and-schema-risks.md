@@ -72,7 +72,7 @@ decision/call이 교차 페어링**될 수 있다.
 
 ## 4. 알려진(의도된) 공백 — 참고
 
-- Codex 매핑은 to-spec, 실데이터 미검증 (토큰 키명 등 `_ingest.raw`로 확인 필요)
+- Codex 매핑은 to-spec, 실데이터 미검증 (토큰 키명 등 diagnostics 집계로 확인 필요)
 - metrics 어댑터는 통과만 시킴 — CC의 라인/커밋/PR/active_time이 `Artifact`로 승격 안 됨
   (`LogKind.ARTIFACT`·`Artifact` payload는 정의만 있고 생산자가 없음)
 - Codex traces 어댑터 스텁 (`codex/traces.py`)

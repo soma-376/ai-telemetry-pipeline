@@ -1,10 +1,4 @@
-"""Central diagnostics engine skeleton.
-
-Detection, classification, filtering, and aggregation will eventually be
-coordinated by :class:`Diagnostics`.  The implementation is intentionally
-empty for now so the public shape can be agreed on before behavior is moved
-from the existing diagnostics modules.
-"""
+"""진단 이슈 탐지, 원인 분류, 필터링을 조정하는 중앙 엔진."""
 
 from __future__ import annotations
 
@@ -38,10 +32,6 @@ class Diagnostics:
                 continue
 
             self._aggregate(observation, finding)
-
-    def snapshot(self) -> list[dict[str, object]]:
-        """현재까지 누적된 진단 집계 결과를 반환한다."""
-        pass
 
     def _detect_issues(self, observation: Observation) -> list[Issue]:
         """관찰 데이터에서 발생한 모든 이슈 유형과 대상을 판별한다."""

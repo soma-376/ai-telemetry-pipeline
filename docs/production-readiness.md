@@ -59,15 +59,15 @@ processors: [memory_limiter, redaction/secrets, batch]  # metrics에도 redactio
 
 ### 9. 파이프라인 자체의 관측
 - 리시버가 자기 메트릭을 노출: 수신/정규화/OTHER/진단 카운트, 처리 지연.
-- 진단 스냅샷 생성(`python src/diagnostics/report.py`)을 크론 또는 대시보드로 —
+- 진단 스냅샷 생성(`python src/diagnostics/snapshot_cli.py`)을 크론 또는 대시보드로 —
   `mapping_miss` 비율이
   임계 초과하면 알림 (Codex to-spec 검증이 여기서 끝난다).
 - 어댑터 미분기 이벤트(`LogKind.OTHER`)도 진단 이벤트를 발화하도록 수정 — 신규 이벤트 감지용.
 
 ### 10. 스키마 관리
 - 삭제된 `SCHEMA.md`를 dataclass에서 **자동 생성**으로 부활 (수기 문서는 다시 썩는다).
-- `SCHEMA_VERSION` 증가 시 마이그레이션 규칙 문서화. `_ingest.raw` 승격 절차(관찰 → 매핑 →
-  `_MAPPED_KEYS` 추가 → adapter_version++)를 README에 명문화.
+- `SCHEMA_VERSION` 증가 시 마이그레이션 규칙 문서화. diagnostics 관찰 → 매핑 →
+  adapter_version 증가 절차를 README에 명문화.
 
 ### 11. 가격표 운영
 - `pricing.py` 하드코딩 → **버전·유효기간 있는 설정 파일**(`pricing.yaml`: model, effective_date, 단가).
@@ -76,7 +76,7 @@ processors: [memory_limiter, redaction/secrets, batch]  # metrics에도 redactio
 ### 12. 미완 어댑터 마무리
 - `adapters/*/metrics.py`에 CC의 lines_of_code/commit/PR/active_time → `Artifact` 승격
   (생산성 지표의 유일한 소스인데 현재 통과만 함).
-- Codex 실데이터 흘려 `_ingest.raw` 확인 → 토큰 키명 확정, traces 스텁 구현.
+- Codex 실데이터 흘려 diagnostics 확인 → 토큰 키명 확정, traces 스텁 구현.
 
 ## 붙이면 좋은 것 (선택)
 

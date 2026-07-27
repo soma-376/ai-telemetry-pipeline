@@ -3,6 +3,10 @@ from __future__ import annotations
 
 from .attributes import (
     _attr_value,
+    _map_bool,
+    _map_float,
+    _map_int,
+    _map_str,
     _merge_json_attrs,
     _opt_bool,
     _opt_float,
@@ -10,7 +14,6 @@ from .attributes import (
     _opt_str,
 )
 from .content import _extract_command, _extract_files
-from .raw import _MAPPED_KEYS, _leftover_raw
 from .timestamp import _parse_ts
 
 __all__ = [
@@ -19,10 +22,12 @@ __all__ = [
     "_opt_float",
     "_opt_str",
     "_opt_bool",
+    "_map_int",
+    "_map_float",
+    "_map_str",
+    "_map_bool",
     "_merge_json_attrs",
     "_parse_ts",
     "_extract_files",
     "_extract_command",
-    "_MAPPED_KEYS",
-    "_leftover_raw",
 ]

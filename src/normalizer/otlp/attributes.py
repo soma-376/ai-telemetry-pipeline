@@ -70,6 +70,52 @@ def _opt_bool(attrs: dict, *keys: str) -> bool | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# 진단 매핑 축약형.
+#
+# attrs.map(target, lambda: _opt_X(attrs, ...)) 의 보일러플레이트를 없앤다 —
+# 필드당 새 정보는 (타깃 이름, required 여부) 뿐이므로 한 줄이면 충분하다.
+# attrs 는 TrackingAttrs 여야 한다(덕타이핑 — 순환 의존을 피하려고 import 안 함).
+
+
+def _map_str(
+    attrs: dict,
+    target: str,
+    *keys: str,
+    res_attrs: dict | None = None,
+    required: bool = True,
+) -> str | None:
+    """res_attrs 를 주면 attrs 미스 시 리소스 속성까지 뒤진다(세션 ID 등)."""
+    sources = (attrs,) if res_attrs is None else (attrs, res_attrs)
+    return attrs.map(
+        target, lambda: _opt_str(*sources, keys=keys), required=required
+    )
+
+
+def _map_int(
+    attrs: dict, target: str, *keys: str, required: bool = True
+) -> int | None:
+    return attrs.map(
+        target, lambda: _opt_int(attrs, *keys), required=required
+    )
+
+
+def _map_float(
+    attrs: dict, target: str, *keys: str, required: bool = True
+) -> float | None:
+    return attrs.map(
+        target, lambda: _opt_float(attrs, *keys), required=required
+    )
+
+
+def _map_bool(
+    attrs: dict, target: str, *keys: str, required: bool = True
+) -> bool | None:
+    return attrs.map(
+        target, lambda: _opt_bool(attrs, *keys), required=required
+    )
+
+
 def _merge_json_attrs(attrs: dict, *keys: str) -> dict:
     """JSON 문자열로 담긴 도구 인자 속성들을 dict 로 병합."""
     out: dict = {}

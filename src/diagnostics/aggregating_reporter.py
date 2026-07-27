@@ -83,5 +83,3 @@ class AggregatingReporter:
         return None
 
 
-# 기존 실행 코드의 import를 깨지 않기 위한 호환 별칭.
-JsonlReporter = AggregatingReporter

@@ -23,7 +23,7 @@ from ...model import (
     ToolDecision,
     ToolKind,
 )
-from ...otlp import _leftover_raw, _opt_bool, _opt_int, _opt_str
+from ...otlp import _map_bool, _map_int, _map_str
 from .common import ADAPTER, ADAPTER_VERSION, build_client, build_identity
 from .logs import (
     _CLAUDE_ACTION,
@@ -50,10 +50,15 @@ def to_event(
 
     identity = build_identity(res_attrs, attrs, ctx.tenant_id)
     client = build_client(res_attrs, attrs)
-    session = _opt_str(attrs, res_attrs, keys=("session.id",)) or "(unknown)"
+    session = (
+        _map_str(attrs, "envelope.session_id", "session.id", res_attrs=res_attrs)
+        or "(unknown)"
+    )
 
     ingest = build_ingest(
-        ctx=ctx, adapter=ADAPTER, adapter_version=ADAPTER_VERSION, raw=_leftover_raw(attrs)
+        ctx=ctx,
+        adapter=ADAPTER,
+        adapter_version=ADAPTER_VERSION,
     )
     envelope = build_envelope(
         client=client, identity=identity, session_id=session, ts=_start(rec), ingest=ingest
@@ -75,7 +80,12 @@ def to_event(
                 k: str(v)
                 for k, v in (
                     ("duration_ms", dur),
-                    ("prompt_length", _opt_int(attrs, "user_prompt_length")),
+                    (
+                        "prompt_length",
+                        _map_int(
+                            attrs, "payload.prompt_length", "user_prompt_length"
+                        ),
+                    ),
                 )
                 if v is not None
             },
@@ -85,46 +95,55 @@ def to_event(
         # 구조·타이밍만. 토큰/비용은 로그(api_request)에 있고 request_id 로 조인.
         ev.type = SpanKind.LLM_REQUEST
         ev.payload = LlmCall(
-            model=_opt_str(attrs, keys=("model", "gen_ai.request.model")),
+            model=_map_str(attrs, "payload.model", "model", "gen_ai.request.model"),
             duration_ms=dur,
-            ttft_ms=_opt_int(attrs, "ttft_ms"),
-            stop_reason=_opt_str(attrs, keys=("stop_reason",)),
-            attempt=_opt_int(attrs, "attempt"),
-            request_id=_opt_str(attrs, keys=("request_id", "client_request_id")),
+            ttft_ms=_map_int(attrs, "payload.ttft_ms", "ttft_ms", required=False),
+            stop_reason=_map_str(
+                attrs, "payload.stop_reason", "stop_reason", required=False
+            ),
+            attempt=_map_int(attrs, "payload.attempt", "attempt", required=False),
+            request_id=_map_str(
+                attrs, "payload.request_id", "request_id", "client_request_id",
+                required=False,
+            ),
         )
 
     elif short == "tool":
         # 툴 호출의 '무엇'(이름·파일·명령). 성공여부는 자식 execution 에 있다.
-        tool_name = _opt_str(attrs, keys=("tool_name",))
+        tool_name = _map_str(attrs, "payload.tool_name", "tool_name")
         ev.type = SpanKind.TOOL
-        ev.call_id = _opt_str(attrs, keys=("tool_use_id",))
-        fp = _opt_str(attrs, keys=("file_path",))
+        # tool_use_id 부재는 로그측이 합성으로 복구하는 알려진 케이스라
+        # 매핑 미스로 세지 않는다(logs.py 와 동일 취급).
+        ev.call_id = _map_str(attrs, "call_id", "tool_use_id", required=False)
+        # 파일·명령은 해당 종류의 툴에만 있다.
+        fp = _map_str(attrs, "payload.files", "file_path", required=False)
         ev.payload = ToolCall(
             tool_name=tool_name,
             tool_kind=ToolKind.NATIVE,
             action=_CLAUDE_ACTION.get(tool_name or "", ToolAction.OTHER),
             files=[fp] if fp else [],
-            command=_opt_str(attrs, keys=("full_command",)),
+            command=_map_str(attrs, "payload.command", "full_command", required=False),
             duration_ms=dur,
         )
 
     elif short == "tool.execution":
         # 툴 호출의 '결과'(성공/실패). 부모(tool)와 parent_id 로 이어진다.
         ev.type = SpanKind.TOOL_EXECUTION
-        ev.call_id = _opt_str(attrs, keys=("tool_use_id",))
+        ev.call_id = _map_str(attrs, "call_id", "tool_use_id", required=False)
         ev.payload = ToolCall(
-            success=_opt_bool(attrs, "success"),
-            error_type=_opt_str(attrs, keys=("error",)),
+            success=_map_bool(attrs, "payload.success", "success"),
+            error_type=_map_str(
+                attrs, "payload.error_type", "error", required=False
+            ),
             duration_ms=dur,
         )
 
     elif short == "tool.blocked_on_user":
         # 승인 게이트. 결정·주체·대기시간.
-        raw_dec = _opt_str(attrs, keys=("decision",))
-        raw_src = _opt_str(attrs, keys=("source",))
+        raw_dec = _map_str(attrs, "payload.decision", "decision")
+        raw_src = _map_str(attrs, "payload.decided_by", "source")
         mapping = _CLAUDE_DECISION_SOURCE_MAP.get(raw_src or "", DecisionMapping())
         ev.type = SpanKind.TOOL_GATE
-        ev.envelope._ingest.raw_value = raw_dec
         ev.payload = ToolDecision(
             decision=_CLAUDE_DECISION_VALUE_MAP.get(raw_dec or "", mapping.decision),
             decided_by=mapping.decided_by,

@@ -2,7 +2,7 @@
 """Codex log adapter — 원시 OTLP → NormalizedLog.
 
 ⚠️ 아래 키명은 공식 문서 스키마 기준 to-spec 이며 실데이터로 미검증이다.
-   승격 안 된 속성은 _ingest.raw 에 쌓이므로, 실데이터를 흘린 뒤 raw 를 확인할 것.
+   승격 안 된 속성은 diagnostics 의 unmapped_fields 집계로 확인할 것.
    Codex 는 tool_use_id 를 주지 않아 call_id 를 합성한다(join.pair_call_ids 가 이음).
 """
 from __future__ import annotations
@@ -30,11 +30,10 @@ from ...pricing import estimate_cost
 from ...otlp import (
     _extract_command,
     _extract_files,
-    _leftover_raw,
+    _map_bool,
+    _map_int,
+    _map_str,
     _merge_json_attrs,
-    _opt_bool,
-    _opt_int,
-    _opt_str,
     _parse_ts,
 )
 from .common import ADAPTER, ADAPTER_VERSION, build_client, build_identity
@@ -83,18 +82,14 @@ def to_event(
     identity = build_identity(res_attrs, attrs, ctx.tenant_id)
     client = build_client(res_attrs, attrs)
     session = (
-        attrs.map(
+        _map_str(
+            attrs,
             "envelope.session_id",
-            lambda: _opt_str(
-                attrs,
-                res_attrs,
-                keys=(
-                    "conversation.id",
-                    "conversation_id",
-                    "thread.id",
-                    "session.id",
-                ),
-            ),
+            "conversation.id",
+            "conversation_id",
+            "thread.id",
+            "session.id",
+            res_attrs=res_attrs,
         )
         or "(unknown)"
     )
@@ -104,7 +99,6 @@ def to_event(
         ctx=ctx,
         adapter=ADAPTER,
         adapter_version=ADAPTER_VERSION,
-        raw=_leftover_raw(attrs),
     )
     envelope = build_envelope(
         client=client,
@@ -117,69 +111,42 @@ def to_event(
         envelope=envelope,
         # Codex 는 턴 상관 ID 를 텔레메트리로 노출하지 않는다 → 세그먼트는 갭 휴리스틱 폴백.
         turn_id=None,
-        sequence=attrs.map(
-            "sequence",
-            lambda: _opt_int(attrs, "event.sequence"),
-            required=False,
-        ),
+        sequence=_map_int(attrs, "sequence", "event.sequence", required=False),
     )
 
     if short == "sse_event":
         # 토큰은 response.completed 시점의 sse_event 에 실린다.
         tokens = Tokens(
-            input=attrs.map(
-                "payload.tokens.input",
-                lambda: _opt_int(
-                    attrs,
-                    "input_token_count",
-                    "input_tokens",
-                    "prompt_tokens",
-                ),
+            input=_map_int(
+                attrs, "payload.tokens.input",
+                "input_token_count", "input_tokens", "prompt_tokens",
                 required=False,
             ),
-            output=attrs.map(
-                "payload.tokens.output",
-                lambda: _opt_int(
-                    attrs,
-                    "output_token_count",
-                    "output_tokens",
-                    "completion_tokens",
-                ),
+            output=_map_int(
+                attrs, "payload.tokens.output",
+                "output_token_count", "output_tokens", "completion_tokens",
                 required=False,
             ),
-            cache_read=attrs.map(
-                "payload.tokens.cache_read",
-                lambda: _opt_int(
-                    attrs,
-                    "cached_token_count",
-                    "cached_input_tokens",
-                    "cache_read_tokens",
-                    "cached_tokens",
-                ),
+            cache_read=_map_int(
+                attrs, "payload.tokens.cache_read",
+                "cached_token_count", "cached_input_tokens",
+                "cache_read_tokens", "cached_tokens",
                 required=False,
             ),
             # cache_create: Codex 는 캐시 생성 토큰을 구분하지 않는다 → None 유지.
-            reasoning=attrs.map(
-                "payload.tokens.reasoning",
-                lambda: _opt_int(
-                    attrs,
-                    "reasoning_token_count",
-                    "reasoning_output_tokens",
-                    "reasoning_tokens",
-                ),
+            reasoning=_map_int(
+                attrs, "payload.tokens.reasoning",
+                "reasoning_token_count", "reasoning_output_tokens",
+                "reasoning_tokens",
                 required=False,
             ),
-            total_reported=attrs.map(
-                "payload.tokens.total_reported",
-                lambda: _opt_int(attrs, "total_tokens"),
+            total_reported=_map_int(
+                attrs, "payload.tokens.total_reported", "total_tokens",
                 required=False,
             ),
         )
         if tokens.billable > 0 or tokens.total_reported is not None:
-            model = attrs.map(
-                "payload.model",
-                lambda: _opt_str(attrs, res_attrs, keys=("model",)),
-            )
+            model = _map_str(attrs, "payload.model", "model", res_attrs=res_attrs)
             cost_usd = (
                 estimate_cost(
                     model,
@@ -197,26 +164,17 @@ def to_event(
                 tokens=tokens,
                 cost_usd=cost_usd,
                 cost_source=ValueSource.ESTIMATED,
-                source=attrs.map(
-                    "payload.source",
-                    lambda: _opt_str(
-                        attrs,
-                        keys=("originator", "session_source"),
-                    ),
+                source=_map_str(
+                    attrs, "payload.source", "originator", "session_source",
                     required=False,
                 ),
-                duration_ms=attrs.map(
-                    "payload.duration_ms",
-                    lambda: _opt_int(attrs, "duration_ms"),
-                    required=False,
+                duration_ms=_map_int(
+                    attrs, "payload.duration_ms", "duration_ms", required=False
                 ),
             )
 
     elif short in ("tool_result", "tool_decision"):
-        tool_name = attrs.map(
-            "payload.tool_name",
-            lambda: _opt_str(attrs, keys=("tool_name", "tool", "name")),
-        )
+        tool_name = _map_str(attrs, "payload.tool_name", "tool_name", "tool", "name")
         # Codex 는 tool_use_id 를 주지 않는다 → 합성한다.
         ev.call_id = synth_call_id(
             session, ev.sequence, ts, tool_name or "?"
@@ -234,27 +192,18 @@ def to_event(
                 action=_CODEX_ACTION.get((tool_name or "").lower(), ToolAction.OTHER),
                 files=_extract_files(args, _CODEX_FILE_KEYS),
                 command=_extract_command(args, _CODEX_CMD_KEYS),
-                success=attrs.map(
-                    "payload.success",
-                    lambda: _opt_bool(attrs, "success"),
-                ),
-                duration_ms=attrs.map(
-                    "payload.duration_ms",
-                    lambda: _opt_int(attrs, "duration_ms"),
-                    required=False,
+                success=_map_bool(attrs, "payload.success", "success"),
+                duration_ms=_map_int(
+                    attrs, "payload.duration_ms", "duration_ms", required=False
                 ),
             )
         else:
-            raw_dec = attrs.map(
-                "payload.decision",
-                lambda: _opt_str(attrs, keys=("decision",)),
-            )
+            raw_dec = _map_str(attrs, "payload.decision", "decision")
             decision, decided_by, scope = _CODEX_DECISION.get(
                 raw_dec or "",
                 (Decision.UNKNOWN, DecisionSource.UNKNOWN, DecisionScope.UNKNOWN),
             )
             ev.type = LogKind.TOOL_DECISION
-            ev.envelope._ingest.raw_value = raw_dec
             ev.payload = ToolDecision(
                 decision=decision,
                 decided_by=decided_by,
@@ -265,10 +214,7 @@ def to_event(
     elif short == "user_prompt":
         ev.type = LogKind.USER_PROMPT
         ev.payload = Prompt(
-            length=attrs.map(
-                "payload.length",
-                lambda: _opt_int(attrs, "prompt_length", "length"),
-            )
+            length=_map_int(attrs, "payload.length", "prompt_length", "length")
         )
 
     elif short == "conversation_starts":

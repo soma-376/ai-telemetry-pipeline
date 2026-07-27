@@ -1,4 +1,4 @@
-"""Request the current diagnostics snapshot and save it as timestamped JSON."""
+"""현재 diagnostics snapshot을 요청해 타임스탬프 JSON으로 저장한다."""
 
 from __future__ import annotations
 
