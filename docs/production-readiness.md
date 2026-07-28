@@ -4,18 +4,21 @@
 
 ## P0 — 이것 없이는 프로덕션이 아님
 
-### 1. 영속화 싱크 (지금은 산출물이 0건)
-- enrichment 뒤에 저장 스테이지를 붙인다. 추천: **SQLite/DuckDB로 시작 → 규모 커지면 ClickHouse/Postgres**.
-- `record_id`가 이미 결정적(idempotent)이므로 **`INSERT ... ON CONFLICT (record_id) DO NOTHING`** 만으로
-  재시도·replay 중복이 공짜로 해결된다. 이 설계 자산을 지금 활용해야 한다.
-- 원본 아카이브(`data/{codex,claude_code}/*.jsonl`)를 읽어 같은 `process()`에 흘리는
-  **backfill 스크립트** 한 개
-  (README에 이미 계획된 항목) — 장애 복구·스키마 재정규화의 기반.
+### 1. 영속화 싱크 — MVP 연결됨 (PROJ-28)
+- ~~enrichment 뒤에 저장 스테이지를 붙인다~~ → **완료**: `src/enrichment/sink_clickhouse.py`가
+  push 단위 배치로 ClickHouse `enriched_events`에 적재한다(mock 컨테이너, 실 저장소 구축 전).
+- `record_id`가 결정적(idempotent)이라 **ReplacingMergeTree ORDER BY event_id** 로
+  재시도·replay 중복이 공짜로 해결된다(조회는 `FINAL`).
+- 남은 항목: 원본 아카이브(`data/{codex,claude_code}/*.jsonl`)를 읽어 같은 `process()`에
+  흘리는 **backfill 스크립트** 한 개 (README에 이미 계획된 항목) — 장애 복구·스키마
+  재정규화의 기반.
 
 ### 2. 오류 격리 (배치 전체 유실 차단)
 - 레코드 단위 try/except: 깨진 레코드는 **DLQ 파일**(`data/deadletter/*.jsonl`)에 원문+오류를 남기고
   나머지는 정상 처리 후 200 응답.
-- 요청 자체가 깨졌을 때만 400, 내부 오류는 **503**(collector가 재시도하도록).
+- 요청 자체가 깨졌을 때만 400, 내부 오류는 **503**(collector가 재시도하도록)
+  — RDS/ClickHouse 장애의 503 분류는 반영됨(`enrichment.errors.BackendUnavailable`);
+  레코드 단위 DLQ 는 미구현.
 
 ### 3. collector 내구성
 ```yaml

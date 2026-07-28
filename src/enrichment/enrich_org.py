@@ -1,4 +1,4 @@
-"""P5 — 회사/부서/사원 as-of 매핑 (PLAN §6 P5, DOMAIN §이력 규칙).
+"""P5 — 회사/부서/사원 as-of 매핑 (DOMAIN §이력 규칙).
 
 각 이벤트에 company/department/employee 를 부여한다. **부서는 이벤트 timestamp 기준(as-of)**
 assignment 로 해석한다 — 현재 부서로 과거를 덮어쓰지 않는다(소급 변경 금지).
@@ -30,9 +30,13 @@ def event_date(ts: Optional[float]) -> Optional[date]:
 
 
 def enrich_org_item(item: Enriched, org_of: OrgOf) -> Enriched:
-    """단일 항목에 company/department/employee 부여(as-of). in-place. (P6 org provider 재사용)"""
-    emp = item.record.internal_employee_id
-    on = event_date(item.record.timestamp)
+    """단일 항목에 company/department/employee 부여(as-of). in-place. (P6 org provider 재사용)
+
+    조회 키는 P4(resolve_employee)가 해석해 둔 internal_employee_id — 미해석(None)이면
+    미등록 경로로 처리한다.
+    """
+    emp = item.internal_employee_id
+    on = event_date(item.timestamp)
     info = org_of(emp, on) if (emp is not None and on is not None) else None
     if info is None:
         item.company_id = None

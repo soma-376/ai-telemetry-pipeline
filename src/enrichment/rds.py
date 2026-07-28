@@ -1,8 +1,9 @@
-"""RDS(Postgres) 접속 + 조회 헬퍼 (PLAN §6 P3).
+"""RDS(Postgres) 접속 + 조회 헬퍼.
 
-psycopg 는 **지연 import** 한다 — 이 모듈을 import 해도 psycopg 부재 환경(로컬 py3.9)에서
-크래시하지 않는다. 실제 접속(connect)이 호출될 때만 psycopg 가 필요하다(P8 E2E: py3.11 컨테이너).
+psycopg 는 **지연 import** 한다 — 이 모듈을 import 해도 psycopg 부재 환경(로컬
+단위 테스트)에서 크래시하지 않는다. 실제 접속(connect)이 호출될 때만 필요하다.
 
+DSN 은 호출 시점에 환경변수에서 읽는다(테스트/호스트 실행의 override 보장).
 as-of 부서 조회: 유효구간 [valid_from, valid_to) 반열림으로 이벤트 시점 부서를 해석한다.
 """
 from __future__ import annotations
@@ -12,22 +13,23 @@ from datetime import date
 from typing import Any, Dict, Optional
 
 # 파이프라인은 컴포즈 네트워크에서 서비스명 postgres:5432 로 접속.
-# 호스트에서 직접 접속 시 ENRICHER_PG_DSN 으로 재정의(예: localhost:55432).
-DEFAULT_DSN = os.environ.get(
-    "ENRICHER_PG_DSN",
-    "host=postgres port=5432 dbname=enricher user=enricher password=enricher",
-)
+# 호스트에서 직접 접속 시 ENRICHMENT_PG_DSN 으로 재정의(예: localhost:55432).
+DEFAULT_DSN = "host=postgres port=5432 dbname=enrichment user=enrichment password=enrichment"
 
 
-def connect(dsn: Optional[str] = None):
+def dsn() -> str:
+    return os.environ.get("ENRICHMENT_PG_DSN", DEFAULT_DSN)
+
+
+def connect(dsn_override: Optional[str] = None):
     """psycopg 연결 반환. psycopg 는 여기서만 import(지연)."""
     import psycopg  # noqa: WPS433  (지연 import 의도적)
 
-    return psycopg.connect(dsn or DEFAULT_DSN)
+    return psycopg.connect(dsn_override or dsn())
 
 
 def fetch_employee(conn, employee_id: str) -> Optional[Dict[str, Any]]:
-    """employee 존재 재확인용 조회. 없으면 None."""
+    """employee 조회. 없으면 None."""
     with conn.cursor() as cur:
         cur.execute(
             "SELECT id, company_id, email, name FROM employee WHERE id = %s",

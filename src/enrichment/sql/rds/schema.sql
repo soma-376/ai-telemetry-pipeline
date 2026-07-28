@@ -1,5 +1,6 @@
--- RDS 조직 스키마 (PLAN §6 P3).
--- 매 실행 idempotent 리셋(권위 소스는 이 파일). verify.sh/e2e.sh가 이 뒤에 seed.sql 적용.
+-- RDS(mock) 조직 스키마. compose 가 /docker-entrypoint-initdb.d 로 마운트해
+-- 최초 초기화 시 자동 적용한다(01-schema → 02-seed 순). 볼륨이 없으므로
+-- down 후 up 마다 재적용된다(결정론적 리셋 — 권위 소스는 이 파일).
 -- 조직 배치는 유효기간(effective-dated) assignment 로 모델링 → 이력 규칙(소급 변경 금지) 충족.
 
 DROP TABLE IF EXISTS employee_department_assignment CASCADE;
