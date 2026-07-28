@@ -1,0 +1,16 @@
+[project]
+name = "enricher"
+version = "0.1.0"
+description = "AI CLI 로그 Enricher — 사원 재확인·회사/부서/사원 as-of 매핑·ClickHouse 적재"
+requires-python = ">=3.11"
+dependencies = [
+  # RDS(Postgres) 접속. ClickHouse는 stdlib urllib로 처리(무거운 클라이언트 금지).
+  "psycopg[binary]>=3.1",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["enricher*"]
