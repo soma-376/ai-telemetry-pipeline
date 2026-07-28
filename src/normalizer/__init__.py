@@ -26,7 +26,6 @@ from __future__ import annotations
 from .normalize import normalize
 from .model import (
     SCHEMA_VERSION,
-    Artifact,
     Client,
     Decision,
     DecisionScope,
@@ -82,7 +81,6 @@ __all__ = [
     "LlmResponse",
     "ToolCall",
     "ToolDecision",
-    "Artifact",
     "Lifecycle",
     "MetricPoint",
     "LogPayload",

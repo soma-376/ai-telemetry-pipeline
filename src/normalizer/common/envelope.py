@@ -11,7 +11,6 @@ import hashlib
 
 from .context import IngestContext
 from ..model import (
-    Artifact,
     Client,
     Envelope,
     Identity,
@@ -94,8 +93,6 @@ def _payload_discriminator(payload, *, call_id: str | None) -> str:
         return f"{p.length}|{p.command_name}"
     if isinstance(p, Lifecycle):
         return str(p.kind)
-    if isinstance(p, Artifact):
-        return f"{p.type}|{p.action}|{p.value}"
     if isinstance(p, MetricPoint):
         dimensions = "|".join(f"{k}={v}" for k, v in sorted(p.attrs.items()))
         return f"{p.name}|{p.value}|{p.count}|{p.sum}|{dimensions}"

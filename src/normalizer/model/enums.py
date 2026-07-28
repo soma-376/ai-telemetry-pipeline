@@ -33,7 +33,6 @@ class LogKind(str, Enum):
     """로그 = 점(event). '무슨 일이 일어났다'는 순간 사실."""
 
     USER_PROMPT = "user_prompt"
-    ARTIFACT = "artifact"
     LIFECYCLE = "lifecycle"
 
     LLM_CALL = "llm_call"
