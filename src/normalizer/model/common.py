@@ -37,8 +37,6 @@ class Ingest:
     signal: SignalType = SignalType.LOG
     source_record_id: str | None = None
     call_id_inferred: bool = False
-    raw_value: str | None = None
-    raw: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass

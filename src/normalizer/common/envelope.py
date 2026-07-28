@@ -54,19 +54,16 @@ def build_envelope(
 
 
 def build_ingest(
-    *, ctx: IngestContext, adapter: str, adapter_version: int, raw: dict[str, str]
+    *, ctx: IngestContext, adapter: str, adapter_version: int
 ) -> Ingest:
     return Ingest(
         adapter_version=adapter_version,
         signal=ctx.signal_type,
         source_record_id=ctx.raw_record_id,
-        raw=raw,
     )
 
 
-def _payload_discriminator(
-    payload, *, call_id: str | None, raw_value: str | None
-) -> str:
+def _payload_discriminator(payload, *, call_id: str | None) -> str:
     """같은 (session, sequence, ts) 에 이벤트가 겹칠 때 키를 가르는 꼬리표.
     payload/조인키 내용에서만 뽑는다 — 재읽기해도 같아야 하므로."""
     p = payload
@@ -89,7 +86,10 @@ def _payload_discriminator(
     if isinstance(p, ToolCall):
         return f"{call_id}|{p.success}"
     if isinstance(p, ToolDecision):
-        return f"{call_id}|{raw_value}"
+        return (
+            f"{call_id}|{p.decision.value}|"
+            f"{p.decided_by.value}|{p.scope.value}"
+        )
     if isinstance(p, Prompt):
         return f"{p.length}|{p.command_name}"
     if isinstance(p, Lifecycle):
@@ -106,11 +106,9 @@ def _idem_fields(ev: Normalized) -> tuple[str, str, str]:
     """타입별로 (sequence|-, type.value, discriminator) 를 뽑는다.
     스팬은 sequence 가 없어 span_id 로 유일성을 보강한다."""
     if isinstance(ev, NormalizedMetric):
-        disc = _payload_discriminator(ev.point, call_id=None, raw_value=None)
+        disc = _payload_discriminator(ev.point, call_id=None)
         return "-", "metric", disc
-    disc = _payload_discriminator(
-        ev.payload, call_id=ev.call_id, raw_value=ev.envelope._ingest.raw_value
-    )
+    disc = _payload_discriminator(ev.payload, call_id=ev.call_id)
     if isinstance(ev, NormalizedSpan):
         # 스팬은 event.sequence 가 없어 (session, ts) 만으로 겹칠 수 있다.
         # span_id 는 전역 유일하므로 이걸로 가른다.

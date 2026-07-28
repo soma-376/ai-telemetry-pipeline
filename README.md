@@ -6,12 +6,14 @@ CLI 코딩 툴(Claude Code / Codex …)의 OTLP 텔레메트리를 읽어 **세�
 ## 데이터 흐름
 
 ```
-CLI 툴 ──OTLP──▶ collector ──┬─ file/{logs,metrics,traces} ▶ data/*.jsonl              (원본 아카이브)
+CLI 툴 ──OTLP──▶ collector ──┬─ file/{logs,metrics,traces} ▶ data/{codex,claude_code}/*.jsonl
+                             │                               (제품별 원본 아카이브)
                              └─ otlphttp(json)             ▶ normalize ▶ enrichment
                                                              (otlp_receiver.py, 실시간 스키마)
 ```
 
-- **원본 아카이브** `data/{logs,metrics,traces}.jsonl` — collector의 file exporter가 그대로 append. 보존용.
+- **원본 아카이브** `data/{codex,claude_code}/{logs,metrics,traces}.jsonl` — collector가
+  resource의 `service.name`을 기준으로 제품별 파일에 append. 보존용.
 - **처리 스트림** — collector가 `otlphttp`(encoding: json)로 push한 OTLP를
   `src/otlp_receiver.py`가 받아 정규화한 뒤 enrichment에 함수 스트림으로 전달한다.
   enrichment 이후의 영속화 단계는 아직 연결하지 않았다.
@@ -41,6 +43,7 @@ docker compose -f docker-compose.dev.yml up
 src/
   otlp_receiver.py        OTLP/HTTP 진입점
   processor.py            normalize → enrich 스트림 조립
+  diagnostics/            누락·정합성 인메모리 집계 및 JSON 스냅샷
   normalizer/             원시 OTLP → Normalized{Log,Span,Metric} 정규화 패키지
   model/                  공통 스키마 (enums + 메시지). 순수 데이터
   otlp/                   OTLP 파싱 공용 유틸 (툴 무관). readers.py = 3 시그널 리더
@@ -59,6 +62,10 @@ teams.json              이메일 → 팀 매핑 (저장소 루트)
 `Normalized` 스트림을 `enrich(events)`에 그대로 전달한다. 현재 정규화기는 `call_id`
 페어링을 위해 OTLP push 한 건만 내부 버퍼링하고, 그 이후 단계에는 이벤트를 하나씩 전달한다.
 
+```bash
+python src/otlp_receiver.py
+```
+
 **Normalized{Log,Span,Metric}** = `model/event.py`의 신호별 스키마. 셋이 공통 **`Envelope`**
 (`identity`/`client`/`session_id`/`timestamp`/`record_id`/`_ingest`)를 품고, 신호별 상관 필드와
 payload만 각자 갖는다:
@@ -71,7 +78,7 @@ payload만 각자 갖는다:
 
 지원 툴: **Claude Code**(`claude_code.*`), **Codex**(`codex.*`).
 Codex adapter는 공식 문서 스키마 기준 **to-spec** — 토큰 키명 등은 실데이터로 재확인 필요.
-확인 방법: 실데이터를 흘린 뒤 `_ingest.raw`에 뭐가 쌓이는지 본다. 거기 남은 게 승격 후보다.
+확인 방법: 실데이터를 흘린 뒤 diagnostics의 `unmapped_fields` 집계를 확인한다.
 
 ### 이 모델에서 꼭 지켜야 할 3가지
 
@@ -104,7 +111,7 @@ Codex adapter는 공식 문서 스키마 기준 **to-spec** — 토큰 키명 �
 ## 한계 (설계상 감수)
 
 - 토큰 귀속·세그먼트 경계는 휴리스틱 근사
-- Codex 토큰 키명은 to-spec — 실데이터 연결 시 `_ingest.raw`로 후보 키 확인
+- Codex 토큰 키명은 to-spec — 실데이터 연결 시 diagnostics의 미매핑 키 집계로 후보 확인
 - `src/normalizer/pricing.py` 단가는 **자리표시자** — 실제 가격표로 갱신 필요 (캐시 절감액은 러프한 추정)
 - 원문 미사용이라 "의도(why)"의 세밀한 라벨은 Phase 2(클라이언트 hook)에서
 - **메트릭 매퍼 미완** — 리시버는 세 신호를 다 받지만 metrics 어댑터가 아직 스텁이라
