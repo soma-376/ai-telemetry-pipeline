@@ -11,7 +11,7 @@ from ...otlp import _opt_str
 
 PREFIX = "codex."
 ADAPTER = "codex"
-ADAPTER_VERSION = 1
+ADAPTER_VERSION = 2
 
 
 def build_identity(res_attrs: dict, attrs: dict, tenant_id: str | None) -> Identity:

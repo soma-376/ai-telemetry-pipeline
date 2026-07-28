@@ -168,6 +168,10 @@ def to_event(
                     attrs, "payload.source", "originator", "session_source",
                     required=False,
                 ),
+                reasoning_effort=_map_str(
+                    attrs, "payload.reasoning_effort", "model_reasoning_effort",
+                    required=False,
+                ),
                 duration_ms=_map_int(
                     attrs, "payload.duration_ms", "duration_ms", required=False
                 ),

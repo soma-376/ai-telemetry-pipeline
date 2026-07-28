@@ -12,7 +12,7 @@ from ...otlp import _opt_str
 
 PREFIX = "claude_code."
 ADAPTER = "claude_code"
-ADAPTER_VERSION = 2
+ADAPTER_VERSION = 3
 
 
 def build_identity(res_attrs: dict, attrs: dict, tenant_id: str | None) -> Identity:

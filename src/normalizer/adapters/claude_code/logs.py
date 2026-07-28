@@ -149,6 +149,9 @@ def to_event(
                 ValueSource.REPORTED if cost is not None else ValueSource.ESTIMATED
             ),
             source=_map_str(attrs, "payload.source", "query_source", required=False),
+            reasoning_effort=_map_str(
+                attrs, "payload.reasoning_effort", "effort", required=False
+            ),
             duration_ms=_map_int(attrs, "payload.duration_ms", "duration_ms"),
             ttft_ms=_map_int(attrs, "payload.ttft_ms", "ttft_ms", required=False),
             stop_reason=_map_str(
