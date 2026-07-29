@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Union
 
 from .common import Envelope, LlmCall, Lifecycle, ToolCall, ToolDecision
@@ -21,16 +21,6 @@ class LlmResponse:
     request_id: str | None = None
     stop_reason: str | None = None
     refusal_category: str | None = None
-
-
-@dataclass
-class Artifact:
-    type: str
-    action: str = "created"
-    id: str | None = None
-    value: float | None = None
-    unit: str | None = None
-    attrs: dict[str, str] = field(default_factory=dict)
 
 
 LogPayload = Union[

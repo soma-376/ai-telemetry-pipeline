@@ -73,8 +73,8 @@ decision/call이 교차 페어링**될 수 있다.
 ## 4. 알려진(의도된) 공백 — 참고
 
 - Codex 매핑은 to-spec, 실데이터 미검증 (토큰 키명 등 diagnostics 집계로 확인 필요)
-- metrics 어댑터는 통과만 시킴 — CC의 라인/커밋/PR/active_time이 `Artifact`로 승격 안 됨
-  (`LogKind.ARTIFACT`·`Artifact` payload는 정의만 있고 생산자가 없음)
+- metrics 어댑터는 통과만 시킴 — CC의 라인/커밋/PR/active_time이 전용 이벤트 타입으로 승격 안 됨
+  (승격 대상 payload 타입은 아직 미정 — 실제 구현 시 정의한다. 미사용 상태였던 `Artifact` 스키마는 제거됨)
 - Codex traces 어댑터 스텁 (`codex/traces.py`)
 - `pricing.py` 단가는 자리표시자
 - Codex `turn_id` 부재 → 세그먼트는 유휴 갭 휴리스틱 의존

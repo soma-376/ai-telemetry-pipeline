@@ -26,7 +26,6 @@ from .common import (
     ToolDecision,
 )
 from .log import (
-    Artifact,
     LlmResponse,
     LogPayload,
     NormalizedLog,
@@ -60,7 +59,6 @@ __all__ = [
     "LlmResponse",
     "ToolCall",
     "ToolDecision",
-    "Artifact",
     "Lifecycle",
     "MetricPoint",
     "LogPayload",

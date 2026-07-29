@@ -115,8 +115,8 @@ Codex adapter는 공식 문서 스키마 기준 **to-spec** — 토큰 키명 �
 - `src/normalizer/pricing.py` 단가는 **자리표시자** — 실제 가격표로 갱신 필요 (캐시 절감액은 러프한 추정)
 - 원문 미사용이라 "의도(why)"의 세밀한 라벨은 Phase 2(클라이언트 hook)에서
 - **메트릭 매퍼 미완** — 리시버는 세 신호를 다 받지만 metrics 어댑터가 아직 스텁이라
-  Claude Code의 라인/커밋/PR/active_time(메트릭에만 존재)이 `Artifact`로 안 들어온다.
-  생산성 지표를 쓰려면 `src/normalizer/adapters/*/metrics.py`를 채워야 한다.
+  Claude Code의 라인/커밋/PR/active_time(메트릭에만 존재)이 전용 이벤트로 안 들어온다.
+  생산성 지표를 쓰려면 `src/normalizer/adapters/*/metrics.py`를 채워야 한다(승격 대상 payload 타입은 구현 시 정의).
 - **Codex는 `turn_id`가 없다** — 세그먼트 경계가 유휴 갭 휴리스틱에만 의존한다.
   CC/Gemini는 `prompt.id`/`prompt_id`로 턴 경계를 정확히 잡을 수 있다(아직 미활용).
 
