@@ -83,6 +83,9 @@ class LlmCall:
     cost_usd: float | None = None
     cost_source: ValueSource = ValueSource.ESTIMATED
     source: str | None = None
+    # 요청 설정의 reasoning effort. 벤더별 값이 달라(high/low/minimal/xhigh/숫자 budget)
+    # enum 아닌 str. 요청값에서만 읽고 토큰 사용량으로 추론하지 않는다.
+    reasoning_effort: str | None = None
     duration_ms: int | None = None
     ttft_ms: int | None = None
     stop_reason: str | None = None
