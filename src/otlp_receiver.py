@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OTLP/HTTP JSON receiver for the normalize → enrich flow.
+"""OTLP/HTTP JSON receiver for the normalize → enrich → store flow.
 
 파일(*.jsonl) 경유 없이 collector 가 직접 밀어준다:
   collector otlphttp exporter(encoding: json) → 이 서버
@@ -7,7 +7,9 @@
 받은 OTLP JSON({resourceLogs|resourceSpans|resourceMetrics: ...})을 그대로
 processor 에 넣는다 — 파서·정규화·enrichment는 각 패키지에서 담당한다.
 
-현재 enrichment 뒤의 영속화 단계는 아직 연결하지 않는다.
+enrichment 결과는 push 단위 배치로 ClickHouse(enriched_events)에 적재한다.
+RDS/ClickHouse 장애는 503 으로 응답한다 — collector otlphttp exporter 가
+재시도하므로 배치가 유실되지 않는다(400 은 영구 오류로 폐기됨).
 """
 
 from __future__ import annotations
@@ -17,7 +19,11 @@ import gzip
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import time
+
 from diagnostics import AggregatingReporter
+from enrichment.errors import BackendUnavailable
+from enrichment.sink_clickhouse import ensure_schema, insert
 from processor import process
 
 _SIGNAL_PATHS = {"/v1/logs", "/v1/traces", "/v1/metrics"}
@@ -52,13 +58,18 @@ class OTLPHandler(BaseHTTPRequestHandler):
             body = gzip.decompress(body)
 
         try:
-            # Generator stages are lazy, so consume the stream to execute the
-            # normalize/enrichment flow.
-            for _event in process(
-                json.loads(body),
-                diagnostics=self.diagnostics,
-            ):
-                pass
+            doc = json.loads(body)
+        except ValueError as exc:
+            self.send_error(400, f"invalid json: {exc}")
+            return
+
+        try:
+            items = process(doc, diagnostics=self.diagnostics)
+            insert(items)
+        except BackendUnavailable as exc:
+            # 인프라 장애는 재시도 가능 — collector 가 5xx 를 재전송한다.
+            self.send_error(503, f"backend unavailable: {exc}")
+            return
         except Exception as exc:  # noqa: BLE001 — 잘못된 배치는 400 으로 돌려보냄
             self.send_error(400, f"parse error: {exc}")
             return
@@ -80,6 +91,19 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
     args = parser.parse_args()
+
+    # 적재 테이블 멱등 보장(CREATE IF NOT EXISTS). compose 는 clickhouse healthy 를
+    # 기다렸다 processor 를 띄우므로 보통 1회에 성공한다. 실패해도 서버는 띄운다 —
+    # 이후 insert 가 503 을 돌려주고 collector 가 재시도한다.
+    for attempt in range(5):
+        try:
+            ensure_schema()
+            print("clickhouse schema ensured", flush=True)
+            break
+        except BackendUnavailable as exc:
+            print(f"warning: clickhouse schema not ensured ({exc}); "
+                  f"retry {attempt + 1}/5", flush=True)
+            time.sleep(2)
 
     OTLPHandler.diagnostics = AggregatingReporter()
     server = ThreadingHTTPServer((args.host, args.port), OTLPHandler)

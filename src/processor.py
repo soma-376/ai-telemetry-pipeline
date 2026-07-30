@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-
 from diagnostics import DiagnosticReporter
 from enrichment.enrich import enrich
+from enrichment.model import Enriched
 from normalizer import normalize
-from normalizer.model import Normalized
 
 
 def process(
     doc: dict,
     diagnostics: DiagnosticReporter | None = None,
-) -> Iterator[Normalized]:
-    """Process one OTLP document and stream normalized, enriched events."""
-    yield from enrich(normalize(doc, diagnostics=diagnostics))
+) -> list[Enriched]:
+    """Process one OTLP document: normalize → enrich.
+
+    저장은 하지 않는다(순수 변환) — ClickHouse 적재는 리시버가 담당한다.
+    """
+    return enrich(normalize(doc, diagnostics=diagnostics))

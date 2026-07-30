@@ -8,23 +8,38 @@ CLI 코딩 툴(Claude Code / Codex …)의 OTLP 텔레메트리를 읽어 **세�
 ```
 CLI 툴 ──OTLP──▶ collector ──┬─ file/{logs,metrics,traces} ▶ data/{codex,claude_code}/*.jsonl
                              │                               (제품별 원본 아카이브)
-                             └─ otlphttp(json)             ▶ normalize ▶ enrichment
-                                                             (otlp_receiver.py, 실시간 스키마)
+                             └─ otlphttp(json)             ▶ normalize ▶ enrichment ▶ ClickHouse
+                                                             (otlp_receiver.py, 실시간 스키마)   (enriched_events)
 ```
 
 - **원본 아카이브** `data/{codex,claude_code}/{logs,metrics,traces}.jsonl` — collector가
   resource의 `service.name`을 기준으로 제품별 파일에 append. 보존용.
 - **처리 스트림** — collector가 `otlphttp`(encoding: json)로 push한 OTLP를
-  `src/otlp_receiver.py`가 받아 정규화한 뒤 enrichment에 함수 스트림으로 전달한다.
-  enrichment 이후의 영속화 단계는 아직 연결하지 않았다.
-- 리시버가 잠깐 죽어도 collector의 재시도 큐가 흡수한다. (원본 아카이브에서 backfill 하는
-  리더는 현재 없다 — 필요해지면 `pipeline`을 파일에 돌리는 짧은 스크립트로 붙인다.)
+  `src/otlp_receiver.py`가 받아 정규화한 뒤 enrichment(조직/부서/사원 as-of 매핑)를 적용하고,
+  push 단위 배치로 ClickHouse `enriched_events`에 적재한다(멱등: `record_id` +
+  ReplacingMergeTree). 조직 정보 RDS와 ClickHouse는 실구축 전이라 compose의
+  mock 컨테이너(postgres, clickhouse)가 대역이다.
+- 리시버가 잠깐 죽거나 RDS/ClickHouse 장애로 503을 돌려줘도 collector의 재시도 큐가
+  흡수한다. (원본 아카이브에서 backfill 하는 리더는 현재 없다 — 필요해지면 `pipeline`을
+  파일에 돌리는 짧은 스크립트로 붙인다.)
 
 ## 실행
 
 ```bash
-python src/otlp_receiver.py
-docker compose -f docker-compose.dev.yml up
+docker compose -f docker-compose.dev.yml up --build
+```
+
+compose 가 4개 서비스를 올린다: `processor`(리시버+enrichment, `requirements.txt`의
+psycopg 필요), `otel-collector`, `postgres`(mock RDS — 조직 스키마+시드를
+`src/enrichment/sql/rds/`에서 최초 초기화 시 자동 적용), `clickhouse`(mock 적재 타깃 —
+DDL 은 processor 가 기동 시 멱등 적용: `src/enrichment/sql/clickhouse/schema.sql`).
+볼륨이 없으므로 `down` 후 `up` 마다 스키마+시드가 재적용된다(결정론적 리셋).
+
+단위 테스트(호스트에 3.13 이 없으면 컨테이너로):
+
+```bash
+docker run --rm -v "$PWD:/work" -w /work -e PYTHONPATH=src python:3.13-slim \
+  python -m unittest discover -s tests -t .
 ```
 
 정규화 출력은 한 줄에 `Normalized{Log,Span,Metric}` 하나이며 enum은 문자열, 관측되지 않은 값은 `null`,
@@ -53,14 +68,27 @@ src/
     codex/                  common.py + logs.py + metrics.py + traces.py
   normalize.py            OTLP push 한 건 → Iterator[Normalized]
   pricing.py              토큰 기반 비용 추정
-  enrichment/
-    enrich.py             Iterable[Normalized] → Iterator[Normalized]
+  enrichment/             normalize 이후·저장 이전 스테이지 (processor 컨테이너 인프로세스)
+    enrich.py             push 단위 오케스트레이션: Iterable[Normalized] → list[Enriched]
+    model.py              Enriched — Normalized 를 감싸고 파생 필드를 쌓는 컨테이너
+    resolve_employee.py   P4: 정본 신원(user_id) → RDS employee 해석(id-or-email)
+    enrich_org.py         P5: 회사/부서/사원 as-of 매핑 ((unassigned) 폴백)
+    providers/            P6: EnrichmentProvider ABC + 자동발견 registry
+                          (org 레퍼런스, github/jira/ai_analysis no-op 스텁)
+    rds.py                Postgres 접속·조회 (psycopg 지연 import)
+    sink_clickhouse.py    ClickHouse HTTP 적재 (stdlib urllib, JSONEachRow)
+    sql/                  mock RDS 스키마+시드, ClickHouse DDL (compose init 마운트)
 teams.json              이메일 → 팀 매핑 (저장소 루트)
 ```
 
 전체 처리 진입점은 `src/processor.py`의 `process(doc)`다. 내부에서 `normalize(doc)`가 만든
-`Normalized` 스트림을 `enrich(events)`에 그대로 전달한다. 현재 정규화기는 `call_id`
-페어링을 위해 OTLP push 한 건만 내부 버퍼링하고, 그 이후 단계에는 이벤트를 하나씩 전달한다.
+`Normalized` 스트림에 `enrich(events)`를 적용해 `list[Enriched]`를 반환하고, 리시버가
+이를 ClickHouse 에 배치 적재한다. 정규화기는 `call_id` 페어링을 위해 OTLP push 한 건을
+내부 버퍼링하며, enrichment 도 같은 push 단위로 RDS 연결을 열고 닫는다.
+
+새 외부 의존성(GitHub/Jira/AI 분석)은 `src/enrichment/providers/`에 파일 하나를
+추가하는 것만으로 registry 에 자동 등록된다(코어 수정 0). provider 산출물은 공통 컬럼으로
+승격하지 않고 `enrichment_json` 으로만 적재한다 — org 만 whitelist 컬럼을 채우는 예외.
 
 ```bash
 python src/otlp_receiver.py

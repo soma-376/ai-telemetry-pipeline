@@ -4,17 +4,16 @@
 
 ## 1. 치명적 — 데이터가 실제로 사라지는 경로
 
-### 1.1 정규화 결과가 어디에도 저장되지 않는다
-`otlp_receiver.py:43` — `for _event in process(...): pass`. enrichment까지 계산한 뒤 전부 버린다.
-원본 아카이브(`data/{codex,claude_code}/*.jsonl`)만 남고, 정규화 스트림은 휘발.
-README에 명시된 한계지만
-사실상 파이프라인의 최종 산출물이 0건이다.
+### 1.1 ~~정규화 결과가 어디에도 저장되지 않는다~~ → 해소 (PROJ-28)
+enrichment 결과가 push 단위 배치로 ClickHouse `enriched_events`에 적재된다
+(`otlp_receiver.py` → `enrichment.sink_clickhouse.insert`). 현재 타깃은 compose 의
+mock ClickHouse — 실 저장소 구축 시 URL 만 교체(`ENRICHMENT_CH_URL`).
 
-### 1.2 배치 내 레코드 1건만 깨져도 배치 전체가 영구 유실된다
-`otlp_receiver.py:45` — 예외 시 무조건 **400** 반환. OTLP 스펙상 4xx는 재시도 불가(permanent)
-오류라 collector가 해당 배치를 그대로 버린다. JSON 파싱 오류·어댑터 버그 하나가
-같은 push에 실린 정상 레코드 수백 건을 같이 지운다. (일시 장애면 5xx, 레코드 단위 오류면
-격리 후 200이 맞다.)
+### 1.2 배치 내 레코드 1건만 깨져도 배치 전체가 영구 유실된다 (부분 해소)
+`otlp_receiver.py` — RDS/ClickHouse 장애는 **503**(`BackendUnavailable`)으로 분류돼
+collector 가 재시도한다. 다만 그 외 예외는 여전히 배치 전체 **400** — 어댑터 버그 하나가
+같은 push에 실린 정상 레코드 수백 건을 같이 지운다. (레코드 단위 오류는
+격리(DLQ) 후 200이 맞다 — 미구현.)
 
 ### 1.3 collector 재시도 큐가 메모리 큐다
 `otel-collector-config.yaml` — `otlphttp` exporter에 `sending_queue.storage`(file_storage) 미설정.
