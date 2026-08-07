@@ -1,0 +1,31 @@
+"""Apply enrichment while preserving the normalized event stream.
+
+한 OTLP push 단위로 실행된다: provider 주석(annotations)만 적용한다.
+사원/부서 등 org 해석은 ingest 에서 승격하지 않고 조회 계층(query-time 조인)으로
+옮겼다 — enrichment 는 더 이상 RDS 에 접속하지 않는다. 신뢰 키 installation_id 는
+어댑터가 이미 envelope 에 담아두므로 여기서 다시 해석할 필요가 없다.
+"""
+from __future__ import annotations
+
+from collections.abc import Iterable
+
+from normalizer.model import Normalized
+
+from .model import Enriched, wrap
+from .providers.registry import Registry
+
+# 모듈 로드 시 1회 자동 발견(pkgutil 스캔을 push 마다 반복하지 않는다).
+_REGISTRY = Registry()
+
+
+def enrich(events: Iterable[Normalized]) -> list[Enriched]:
+    """Normalized 이벤트에 provider 주석을 부여해 Enriched 로 반환한다. 행 수 보존.
+
+    normalize()가 push 전체를 이미 버퍼링(pair_call_ids)하므로 generator 대신
+    list 를 확정 반환한다.
+    """
+    items = wrap(list(events))
+    if not items:
+        return items
+    _REGISTRY.apply(items, {})
+    return items
