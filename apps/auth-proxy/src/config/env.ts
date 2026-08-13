@@ -14,12 +14,16 @@ function positiveInteger(name: string, fallback: number): number {
   return value;
 }
 
-function boolean(name: string, fallback: boolean): boolean {
+export const logLevels = ["silent", "error", "warn", "info", "debug"] as const;
+export type LogLevel = (typeof logLevels)[number];
+
+function logLevel(name: string, fallback: LogLevel): LogLevel {
   const raw = process.env[name];
   if (!raw) return fallback;
-  if (raw === "true") return true;
-  if (raw === "false") return false;
-  throw new Error(`${name} must be true or false`);
+  if (!logLevels.includes(raw as LogLevel)) {
+    throw new Error(`${name} must be one of: ${logLevels.join(", ")}`);
+  }
+  return raw as LogLevel;
 }
 
 export const env = Object.freeze({
@@ -28,5 +32,5 @@ export const env = Object.freeze({
   databaseUrl: required("DATABASE_URL"),
   tokenHashSecret: required("TOKEN_HASH_SECRET"),
   maxOtlpBodySize: positiveInteger("MAX_OTLP_BODY_SIZE", 10 * 1024 * 1024),
-  logRequestHeaders: boolean("LOG_REQUEST_HEADERS", false),
+  logLevel: logLevel("LOG_LEVEL", "info"),
 });
