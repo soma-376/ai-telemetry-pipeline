@@ -9,6 +9,8 @@ from pathlib import Path
 from urllib.request import urlopen
 
 _KST = timezone(timedelta(hours=9))
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+_DEFAULT_OUTPUT_DIR = _REPOSITORY_ROOT / "data" / "diagnostics"
 
 
 def fetch_summary(url: str) -> list[dict[str, object]]:
@@ -48,7 +50,8 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("data/diagnostics"),
+        default=_DEFAULT_OUTPUT_DIR,
+        help="snapshot directory (default: <repository>/data/diagnostics)",
     )
     args = parser.parse_args()
     output = write_summary(fetch_summary(args.url), args.output_dir)

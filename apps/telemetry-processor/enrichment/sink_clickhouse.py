@@ -31,11 +31,12 @@ TABLE = "enriched_events"
 DDL_PATH = Path(__file__).resolve().parent / "sql" / "clickhouse" / "schema.sql"
 
 # 적재 컬럼 화이트리스트. 이 순서/집합을 초과하지 않는다.
+# 슬림 스키마: 검증 조인 키(installation_id) + raw + annotations 만 승격한다.
+# 사원/부서 등 org 정보는 컬럼으로 박지 않고 query-time 조인으로 해석한다
+# (installation_id + ts → enrollment.installation → employee → assignment as-of).
 WHITELIST_COLUMNS = [
-    "event_id", "ts", "tenant_id", "company_id", "actor_id",
-    "internal_employee_id", "employee_verified", "signal", "product",
-    "department_code_as_of", "department_name_as_of", "employee_name",
-    "raw_json", "enrichment_json",
+    "event_id", "ts", "tenant_id", "installation_id",
+    "signal", "product", "team_ids_as_of", "raw_json", "enrichment_json",
 ]
 
 
@@ -79,21 +80,21 @@ def ensure_schema(url: Optional[str] = None, database: Optional[str] = None) -> 
 
 
 def to_row(it: Enriched) -> Dict[str, Any]:
-    """Enriched → 화이트리스트 컬럼 dict."""
+    """Enriched → 화이트리스트 컬럼 dict(슬림).
+
+    org 정보(사원/부서/회사명)는 승격하지 않는다 — installation_id + ts 만 있으면
+    조회 계층에서 as-of 조인으로 재구성 가능하다. installation_id 는 프로퍼티를 두지 않고
+    envelope 에서 직접 읽는다(Normalized 에 이미 있음)."""
     ts = it.timestamp
+    identity = it.event.envelope.identity
     return {
         "event_id": it.event_id,
         "ts": int(ts) if ts is not None else 0,            # DateTime: epoch 초
         "tenant_id": it.tenant_id or "",
-        "company_id": it.company_id,                       # Nullable → None 허용
-        "actor_id": it.user_id or "",
-        "internal_employee_id": it.internal_employee_id or "",
-        "employee_verified": 1 if it.employee_verified else 0,
+        "installation_id": identity.installation_id or "", # 프록시 검증 조인 키
         "signal": it.signal or "",
         "product": it.product or "",
-        "department_code_as_of": it.department_code_as_of or "",
-        "department_name_as_of": it.department_name_as_of or "",
-        "employee_name": it.employee_name,                 # Nullable → None 허용
+        "team_ids_as_of": it.team_ids_as_of,               # Array(String)
         "raw_json": event_to_json(it.event),
         "enrichment_json": json.dumps(it.annotations, sort_keys=True,
                                       separators=(",", ":"), ensure_ascii=False),
