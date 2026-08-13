@@ -1,9 +1,8 @@
 services:
-  processor:
-    build: .
-    command:
-      - python
-      - otlp_receiver.py
+  telemetry-processor:
+    build:
+      context: .
+      dockerfile: apps/telemetry-processor/Dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -30,7 +29,7 @@ services:
       - "4317:4317"
       - "4318:4318"
     depends_on:
-      - processor
+      - telemetry-processor
     restart: unless-stopped
 
   # mock RDS — 조직/부서/사원 정보 소스(실 RDS 구축 전까지의 대역).
@@ -44,8 +43,8 @@ services:
       - "55432:5432"     # 호스트 디버그용(파이프라인은 컴포즈 네트워크의 postgres:5432 사용)
     volumes:
       # 최초 초기화 시 자동 적용(01→02 순). 볼륨이 없으므로 down 후 up 마다 재시드.
-      - ./src/enrichment/sql/rds/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./src/enrichment/sql/rds/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./sql/rds/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./sql/rds/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U enrichment -d enrichment"]
       interval: 2s

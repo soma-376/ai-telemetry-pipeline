@@ -4,10 +4,12 @@ RUN addgroup --gid 1001 --system app && \
     adduser --uid 1001 --system --ingroup app app
 
 WORKDIR /app
-# 의존성을 소스보다 먼저 설치해 레이어 캐시를 살린다.
-COPY requirements.txt ./
+
+COPY apps/telemetry-processor/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
-COPY src/ ./
+
+COPY apps/telemetry-processor/ ./
+COPY sql/clickhouse/ ./enrichment/sql/clickhouse/
 
 ENV PYTHONUNBUFFERED=1
 
