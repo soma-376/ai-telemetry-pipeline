@@ -78,7 +78,7 @@ exporters:
   # 로컬에서 실행 중인 Python receiver로 OTLP/JSON을 push한다.
   # endpoint 뒤에 /v1/{logs,traces,metrics} 는 exporter가 자동으로 붙인다.
   otlphttp/telemetry_pipeline:
-    endpoint: http://processor:8080
+    endpoint: http://telemetry-processor:8080
     encoding: json
 
 service:
