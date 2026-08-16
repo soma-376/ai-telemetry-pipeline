@@ -1,0 +1,32 @@
+function required(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
+function positiveInteger(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return value;
+}
+
+function boolean(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  throw new Error(`${name} must be true or false`);
+}
+
+export const env = Object.freeze({
+  port: positiveInteger("PORT", 4316),
+  collectorBaseUrl: required("COLLECTOR_BASE_URL").replace(/\/$/, ""),
+  databaseUrl: required("DATABASE_URL"),
+  tokenHashSecret: required("TOKEN_HASH_SECRET"),
+  maxOtlpBodySize: positiveInteger("MAX_OTLP_BODY_SIZE", 10 * 1024 * 1024),
+  logRequestHeaders: boolean("LOG_REQUEST_HEADERS", false),
+});
