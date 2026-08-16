@@ -31,6 +31,7 @@ from ...otlp import (
     _extract_command,
     _extract_files,
     _map_bool,
+    _map_float,
     _map_int,
     _map_str,
     _merge_json_attrs,
@@ -49,6 +50,7 @@ _CODEX_ACTION = {
     "web_search": ToolAction.SEARCH,
     "web.search": ToolAction.SEARCH,
     "shell": ToolAction.EXEC,
+    "shell_command": ToolAction.EXEC,
     "local_shell": ToolAction.EXEC,
     "exec": ToolAction.EXEC,
     "bash": ToolAction.EXEC,
@@ -71,6 +73,14 @@ _CODEX_DECISION = {
     ),
     "denied": (Decision.REJECT, DecisionSource.USER, DecisionScope.ONCE),
     "abort": (Decision.ABORT, DecisionSource.USER, DecisionScope.ONCE),
+}
+
+_CODEX_DECISION_SOURCE = {
+    "user": DecisionSource.USER,
+    "config": DecisionSource.CONFIG,
+    "hook": DecisionSource.HOOK,
+    "policy": DecisionSource.POLICY,
+    "system": DecisionSource.SYSTEM,
 }
 
 
@@ -114,7 +124,107 @@ def to_event(
         sequence=_map_int(attrs, "sequence", "event.sequence", required=False),
     )
 
-    if short == "sse_event":
+    if short == "api_request":
+        tokens = Tokens(
+            input=_map_int(
+                attrs,
+                "payload.tokens.input",
+                "input_token_count",
+                "input_tokens",
+                "prompt_tokens",
+                required=False,
+            ),
+            output=_map_int(
+                attrs,
+                "payload.tokens.output",
+                "output_token_count",
+                "output_tokens",
+                "completion_tokens",
+                required=False,
+            ),
+            cache_read=_map_int(
+                attrs,
+                "payload.tokens.cache_read",
+                "cached_token_count",
+                "cached_input_tokens",
+                "cache_read_tokens",
+                "cached_tokens",
+                required=False,
+            ),
+            reasoning=_map_int(
+                attrs,
+                "payload.tokens.reasoning",
+                "reasoning_token_count",
+                "reasoning_output_tokens",
+                "reasoning_tokens",
+                required=False,
+            ),
+            total_reported=_map_int(
+                attrs, "payload.tokens.total_reported", "total_tokens", required=False
+            ),
+        )
+        model = _map_str(attrs, "payload.model", "model", res_attrs=res_attrs)
+        reported_cost = _map_float(
+            attrs, "payload.cost_usd", "cost_usd", required=False
+        )
+        estimated_cost = (
+            estimate_cost(
+                model,
+                tokens.input or 0,
+                tokens.output or 0,
+                tokens.cache_read or 0,
+                tokens.cache_create or 0,
+            )
+            if tokens.billable > 0
+            else None
+        )
+        ev.type = LogKind.LLM_CALL
+        ev.payload = LlmCall(
+            model=model,
+            tokens=tokens,
+            cost_usd=reported_cost if reported_cost is not None else estimated_cost,
+            cost_source=(
+                ValueSource.REPORTED
+                if reported_cost is not None
+                else ValueSource.ESTIMATED
+            ),
+            source=_map_str(
+                attrs,
+                "payload.source",
+                "originator",
+                "session_source",
+                required=False,
+            ),
+            reasoning_effort=_map_str(
+                attrs,
+                "payload.reasoning_effort",
+                "model_reasoning_effort",
+                required=False,
+            ),
+            duration_ms=_map_int(
+                attrs, "payload.duration_ms", "duration_ms", required=False
+            ),
+            attempt=_map_int(attrs, "payload.attempt", "attempt", required=False),
+            request_id=_map_str(
+                attrs,
+                "payload.request_id",
+                "request_id",
+                "client_request_id",
+                required=False,
+            ),
+            error_type=_map_str(
+                attrs, "payload.error_type", "error_type", "error", required=False
+            ),
+            status_code=_map_int(
+                attrs, "payload.status_code", "status_code", "status", required=False
+            ),
+        )
+
+    elif short == "sse_event":
+        kind = _map_str(attrs, "payload.kind", "kind", required=False)
+        if kind != "response.completed":
+            return None
+
         # 토큰은 response.completed 시점의 sse_event 에 실린다.
         tokens = Tokens(
             input=_map_int(
@@ -197,6 +307,13 @@ def to_event(
                 files=_extract_files(args, _CODEX_FILE_KEYS),
                 command=_extract_command(args, _CODEX_CMD_KEYS),
                 success=_map_bool(attrs, "payload.success", "success"),
+                error_type=_map_str(
+                    attrs,
+                    "payload.error_type",
+                    "error_type",
+                    "error",
+                    required=False,
+                ),
                 duration_ms=_map_int(
                     attrs, "payload.duration_ms", "duration_ms", required=False
                 ),
@@ -207,6 +324,17 @@ def to_event(
                 raw_dec or "",
                 (Decision.UNKNOWN, DecisionSource.UNKNOWN, DecisionScope.UNKNOWN),
             )
+            raw_source = _map_str(
+                attrs,
+                "payload.source",
+                "decision_source",
+                "source",
+                required=False,
+            )
+            if raw_source is not None:
+                decided_by = _CODEX_DECISION_SOURCE.get(
+                    raw_source.lower(), DecisionSource.UNKNOWN
+                )
             ev.type = LogKind.TOOL_DECISION
             ev.payload = ToolDecision(
                 decision=decision,

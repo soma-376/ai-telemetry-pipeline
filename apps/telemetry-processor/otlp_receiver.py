@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import time
@@ -27,6 +28,56 @@ from enrichment.sink_clickhouse import ensure_schema, insert
 from processor import process
 
 _SIGNAL_PATHS = {"/v1/logs", "/v1/traces", "/v1/metrics"}
+_LOG_REQUEST_HEADERS = os.environ.get("LOG_REQUEST_HEADERS", "false").lower() == "true"
+_SAFE_HEADERS = {
+    "content-type",
+    "content-encoding",
+    "content-length",
+    "user-agent",
+    "x-request-id",
+    "x-pulsemetry-token-id",
+    "x-pulsemetry-tenant-id",
+    "x-pulsemetry-installation-id",
+    "x-pulsemetry-member-id",
+}
+
+# 프록시가 토큰을 검증해 붙인 신뢰 키(헤더)를 OTLP resource 속성으로 승격한다.
+# normalizer 는 이미 이 속성명을 읽으므로(tenant.id / developer.installation_id)
+# 여기서 심어주면 하류 변경 없이 신원이 정규화 이벤트까지 따라간다.
+#   resource-attr 이름 → 운반 헤더 이름
+_IDENTITY_STAMP = {
+    "tenant.id": "x-pulsemetry-tenant-id",
+    "developer.installation_id": "x-pulsemetry-installation-id",
+}
+# readers 가 traces 를 resourceSpans/resourceTraces 양쪽에서 읽으므로 둘 다 스탬프.
+_RESOURCE_KEYS = (
+    "resourceLogs",
+    "resourceMetrics",
+    "resourceSpans",
+    "resourceTraces",
+)
+
+
+def _stamp_identity(doc: dict, headers) -> None:
+    """프록시 검증 신원을 각 resource 의 속성에 upsert 한다.
+
+    클라이언트가 동일 키를 자기신고했더라도 프록시 값으로 덮어써(신뢰 경계),
+    정본 신뢰 키가 payload 자기신고값을 항상 이긴다. 값이 없는 헤더는 건너뛴다.
+    """
+    stamps = {attr: headers.get(hdr) for attr, hdr in _IDENTITY_STAMP.items()}
+    stamps = {attr: value for attr, value in stamps.items() if value}
+    if not stamps:
+        return
+    for resource_key in _RESOURCE_KEYS:
+        for block in doc.get(resource_key, []):
+            attrs = block.setdefault("resource", {}).setdefault("attributes", [])
+            remaining = dict(stamps)
+            for attr in attrs:
+                key = attr.get("key")
+                if key in remaining:
+                    attr["value"] = {"stringValue": remaining.pop(key)}
+            for key, value in remaining.items():
+                attrs.append({"key": key, "value": {"stringValue": value}})
 
 
 class OTLPHandler(BaseHTTPRequestHandler):
@@ -52,6 +103,18 @@ class OTLPHandler(BaseHTTPRequestHandler):
             self.send_error(404, "unknown signal path")
             return
 
+        if _LOG_REQUEST_HEADERS:
+            headers = {
+                name.lower(): value
+                for name, value in self.headers.items()
+                if name.lower() in _SAFE_HEADERS
+            }
+            print(json.dumps({
+                "event": "collector_request",
+                "path": self.path,
+                "headers": headers,
+            }, ensure_ascii=False, separators=(",", ":")), flush=True)
+
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
         if self.headers.get("Content-Encoding") == "gzip":
@@ -62,6 +125,9 @@ class OTLPHandler(BaseHTTPRequestHandler):
         except ValueError as exc:
             self.send_error(400, f"invalid json: {exc}")
             return
+
+        # 프록시가 헤더로 넘긴 신뢰 신원을 resource 속성으로 승격(정규화 전에).
+        _stamp_identity(doc, self.headers)
 
         try:
             items = process(doc, diagnostics=self.diagnostics)

@@ -19,7 +19,10 @@ SCHEMA_VERSION = 1
 @dataclass
 class Identity:
     tenant_id: str | None = None
-    user_id: str | None = None
+    member_id: str | None = None
+    installation_id: str | None = None
+
+    # 섀도우 AI 탐지용
     vendor_email: str | None = None
     vendor_account_id: str | None = None
 
