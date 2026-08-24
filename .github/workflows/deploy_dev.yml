@@ -101,7 +101,7 @@ jobs:
       # 장기 액세스 키를 쓰지 않는다(ADR-0024). 신뢰 정책이 sub 를 StringEquals 로 고정하므로
       # 이 잡에 environment: 를 붙이면 sub 가 바뀌어 AssumeRole 이 거부된다. 붙이지 마라.
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
