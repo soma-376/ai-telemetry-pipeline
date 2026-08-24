@@ -37,10 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '24'
           cache: npm
@@ -92,12 +94,14 @@ jobs:
 
           echo "배포 설정 확인 완료"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       # 장기 액세스 키를 쓰지 않는다(ADR-0024). 신뢰 정책이 sub 를 StringEquals 로 고정하므로
       # 이 잡에 environment: 를 붙이면 sub 가 바뀌어 AssumeRole 이 거부된다. 붙이지 마라.
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -105,14 +109,14 @@ jobs:
       # registry 출력으로 레지스트리 URI 를 얻는다. 덕분에 계정 ID 를 워크플로우에 적지 않는다.
       - name: Login to Amazon ECR
         id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       # 컨텍스트가 레포 루트다. Dockerfile 이 sql/clickhouse/ 를 앱 디렉터리 밖에서 COPY 한다.
       # 캐시는 type=gha 만 쓴다 - 배포 역할에 ECR pull 권한이 없어 type=registry 는 AccessDenied 다.
       - name: Build and push post-processor
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: apps/telemetry-processor/Dockerfile
@@ -127,7 +131,7 @@ jobs:
 
       # 이쪽은 컨텍스트가 앱 디렉터리다. 위 스텝과 비대칭인 것이 정상이다.
       - name: Build and push auth-proxy
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: apps/auth-proxy
           platforms: linux/arm64
