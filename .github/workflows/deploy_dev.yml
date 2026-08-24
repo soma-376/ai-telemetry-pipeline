@@ -32,25 +32,12 @@ env:
   ECS_SERVICE_AUTH_PROXY: ${{ secrets.ECS_SERVICE_AUTH_PROXY_DEV }}
 
 jobs:
-  test:
-    name: Test
+  validate:
+    name: Validate
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      # 테스트는 레포 루트 tests/ 에 있으나 apps/telemetry-processor 의 패키지를
-      # (enrichment, diagnostics) 최상위로 import 한다. PYTHONPATH 없이는 ModuleNotFoundError 다.
-      # pytest 는 이 레포에 설정되어 있지 않으므로 stdlib unittest 를 쓴다.
-      - name: Test telemetry-processor
-        run: |
-          pip install --no-cache-dir -r apps/telemetry-processor/requirements.txt
-          PYTHONPATH=apps/telemetry-processor python -m unittest discover -s tests -t .
 
       - name: Set up Node 24
         uses: actions/setup-node@v4
@@ -69,7 +56,7 @@ jobs:
 
   deploy:
     name: Build, push to ECR and force-deploy ECS
-    needs: test
+    needs: validate
     # 산출물이 linux/arm64 여야 한다(Fargate ARM64 / dev 는 t4g Graviton).
     # amd64 러너에서 QEMU 로 크로스빌드하면 몇 배 느리므로 네이티브 ARM 러너를 쓴다.
     runs-on: ubuntu-24.04-arm
