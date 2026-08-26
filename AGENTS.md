@@ -17,7 +17,7 @@ Pulsemetry는 Claude Code·Codex 등 개발 AI 도구의 사용량과 비용을 
 
 **앱 2개가 한 레포에 있다.** 시스템 아키텍처의 Collector 뒤편 — Masker·Adapter·Enricher 자리다.
 
-```
+```text
 apps/auth-proxy/            TypeScript. OTLP 요청의 토큰 검증 → x-pulsemetry-* 4헤더 부여 → Authorization 제거
 apps/telemetry-processor/   Python. 신원 스탬핑 → 벤더별 어댑터 정규화 → 조직 결합 → ClickHouse 적재
   normalizer/               claude_code. · codex. 이벤트 매핑
@@ -43,7 +43,7 @@ auth-proxy의 존재 자체가 README에 없고, "Codex traces 미구현" 서술
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
-cd apps/auth-proxy && npm ci && npm run build      # CI가 하는 것도 이것뿐
+cd apps/auth-proxy && npm ci && npm run typecheck && npm run build   # CI가 하는 것도 이것뿐
 cd apps/telemetry-processor && pip install -r requirements.txt
 ```
 
