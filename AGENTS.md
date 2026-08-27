@@ -33,11 +33,15 @@ sql/rds/                    dev 부트스트랩 DDL·시드 — 진실원이 아
 - **enrollment 스키마 DDL의 진실원** → `pulsemetry-backend`의 Flyway. `sql/rds/schema.sql`은 dev 편의용이다
 - **배포 collector 설정** → `infra/config/otel-collector.yaml`. ECS가 실제로 기동하는 건 그쪽이다
 
-## ⚠️ 스테일 문서
+## ⚠️ 문서 상태
 
-README와 `docs/`의 상당 부분이 **PROJ-52 이전 `src/` 구조 기준**이라 현재 `apps/` 구조와 맞지 않는다.
-auth-proxy의 존재 자체가 README에 없고, "Codex traces 미구현" 서술은 이미 구현돼 반대로 스테일이다.
-**구조를 알아야 하면 코드와 `../docs/architecture/repos.md`를 본다.**
+README와 `docs/` 4종의 **코드 경로·구조 서술은 PROJ-79에서 `apps/` 배치에 맞췄다.**
+README가 소개하던 "세부작업 분류 + 토큰 귀속 분석기" CLI는 이 레포에 없어서 걷어냈고,
+데이터 흐름에 빠져 있던 auth-proxy를 넣었다. Codex traces 어댑터를 스텁이라 적은 서술 3곳도 고쳤다.
+
+아직 코드와 대조하지 않은 것은 `docs/normalizer.md`·`docs/diagnostics.md`의 **필드 단위 정의**다.
+경로·지원 이벤트 표·어댑터 등록은 확인했지만 payload 필드 하나하나까지는 보지 않았다.
+**필드를 신뢰해야 하는 작업이면 코드를 먼저 본다.**
 
 ## 명령어
 
