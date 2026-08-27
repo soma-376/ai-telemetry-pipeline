@@ -1,7 +1,7 @@
 # Diagnostics
 
 ```text
-src/diagnostics/
+apps/telemetry-processor/diagnostics/
 ├─ __init__.py                 # 외부에 공개하는 진단 클래스와 타입
 ├─ engine.py                   # 이슈 탐지, reason 판별, 필터링
 ├─ model.py                    # Observation, Issue, Finding, DiagnosticEvent

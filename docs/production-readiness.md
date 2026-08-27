@@ -5,12 +5,12 @@
 ## P0 — 이것 없이는 프로덕션이 아님
 
 ### 1. 영속화 싱크 — MVP 연결됨 (PROJ-28)
-- ~~enrichment 뒤에 저장 스테이지를 붙인다~~ → **완료**: `src/enrichment/sink_clickhouse.py`가
+- ~~enrichment 뒤에 저장 스테이지를 붙인다~~ → **완료**: `apps/telemetry-processor/enrichment/sink_clickhouse.py`가
   push 단위 배치로 ClickHouse `enriched_events`에 적재한다(mock 컨테이너, 실 저장소 구축 전).
 - `record_id`가 결정적(idempotent)이라 **ReplacingMergeTree ORDER BY event_id** 로
   재시도·replay 중복이 공짜로 해결된다(조회는 `FINAL`).
 - 남은 항목: 원본 아카이브(`data/{codex,claude_code}/*.jsonl`)를 읽어 같은 `process()`에
-  흘리는 **backfill 스크립트** 한 개 (README에 이미 계획된 항목) — 장애 복구·스키마
+  흘리는 **backfill 스크립트** 한 개 — 장애 복구·스키마
   재정규화의 기반.
 
 ### 2. 오류 격리 (배치 전체 유실 차단)
@@ -62,7 +62,7 @@ processors: [memory_limiter, redaction/secrets, batch]  # metrics에도 redactio
 
 ### 9. 파이프라인 자체의 관측
 - 리시버가 자기 메트릭을 노출: 수신/정규화/OTHER/진단 카운트, 처리 지연.
-- 진단 스냅샷 생성(`python src/diagnostics/snapshot_cli.py`)을 크론 또는 대시보드로 —
+- 진단 스냅샷 생성(`python apps/telemetry-processor/diagnostics/snapshot_cli.py`)을 크론 또는 대시보드로 —
   `mapping_miss` 비율이
   임계 초과하면 알림 (Codex to-spec 검증이 여기서 끝난다).
 - 어댑터 미분기 이벤트(`LogKind.OTHER`)도 진단 이벤트를 발화하도록 수정 — 신규 이벤트 감지용.

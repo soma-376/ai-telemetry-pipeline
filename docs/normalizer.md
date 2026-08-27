@@ -348,7 +348,7 @@ metric은 Codex와 Claude Code 모두 동일한 `MetricPoint` 구조로 전달�
 ## 코드 기준 위치
 
 ```text
-src/normalizer/
+apps/telemetry-processor/normalizer/
 ├─ normalize.py               # 어댑터 선택, diagnostics 검사, call_id 연결, 이벤트 방출
 ├─ model/
 │  ├─ common.py               # Envelope와 공통 payload
@@ -360,10 +360,15 @@ src/normalizer/
 ├─ adapters/
 │  ├─ codex/                  # Codex → 공통 스키마
 │  └─ claude_code/            # Claude Code → 공통 스키마
-└─ common/
-   ├─ envelope.py             # 공통 envelope와 record_id 생성
-   └─ metric.py               # 공통 metric 변환
+├─ common/
+│  ├─ envelope.py             # 공통 envelope와 record_id 생성
+│  ├─ metric.py               # 공통 metric 변환
+│  ├─ context.py              # 수집 컨텍스트(IngestContext)
+│  ├─ call_id.py              # call_id 합성과 페어링
+│  └─ serialization.py        # JSON 직렬화 규칙
+├─ otlp/                      # OTLP 파싱 공용 유틸. readers.py = 3 시그널 리더
+└─ pricing.py                 # 토큰 기반 비용 추정 (단가는 자리표시자)
 
-src/enrichment/enrich.py      # 현재 Normalized 스트림을 변경 없이 전달
-src/processor.py              # normalize와 enrichment 연결
+apps/telemetry-processor/enrichment/enrich.py   # Normalized 스트림에 조직 정보를 결합해 Enriched 로 만든다
+apps/telemetry-processor/processor.py           # normalize 와 enrichment 연결
 ```
