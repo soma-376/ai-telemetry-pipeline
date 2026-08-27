@@ -79,7 +79,8 @@ processors: [memory_limiter, redaction/secrets, batch]  # metrics에도 redactio
 ### 12. 미완 어댑터 마무리
 - `adapters/*/metrics.py`에 CC의 lines_of_code/commit/PR/active_time → 전용 이벤트 타입으로 승격
   (생산성 지표의 유일한 소스인데 현재 통과만 함. 승격 대상 payload 타입은 구현 시 정의).
-- Codex 실데이터 흘려 diagnostics 확인 → 토큰 키명 확정, traces 스텁 구현.
+- Codex 실데이터 흘려 diagnostics 확인 → 토큰 키명 확정.
+  (traces 어댑터는 구현돼 있다 — `conversation_starts`·`api_request`·`tool_result`·`tool_decision` 4종.)
 
 ## 붙이면 좋은 것 (선택)
 

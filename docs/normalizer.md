@@ -308,7 +308,11 @@ metric은 Codex와 Claude Code 모두 동일한 `MetricPoint` 구조로 전달�
 | log | `codex.user_prompt` | `user_prompt` |
 | log | `codex.conversation_starts` | `lifecycle(session_start)` |
 | metric | `codex.*` metric | `NormalizedMetric` |
-| span | `codex.*` span | 현재 미지원 |
+| span | `codex.conversation_starts` | `turn` + `lifecycle(session_start)` |
+| span | `codex.api_request` | `llm_request` |
+| span | `codex.tool_result` | `tool_execution` |
+| span | `codex.tool_decision` | `tool_gate` |
+| span | 그 밖의 `codex.*` span | 전달하지 않는다 (어댑터가 `None` 반환) |
 
 `codex.sse_event`에 token 정보가 없으면 현재 `type=other`, `payload=null`인
 `NormalizedLog`로 enrichment에 전달된다. diagnostics는 이를
