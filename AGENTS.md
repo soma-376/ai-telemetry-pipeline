@@ -62,4 +62,5 @@ cd apps/telemetry-processor && pip install -r requirements.txt
 - `enrollment` 스키마에 **쓰지 않는다.** 읽기 전용 소비자다.
 - 알려진 결함은 `../docs/contracts/telemetry-ingest.md` §5에 모여 있다 (B3·M2~M6·M11·M12).
   **B4(배포 collector 설정 드리프트)는 PROJ-77로 해소됐다. 문서 쪽 표는 아직 갱신 전이다.**
-- `docs/adr/`가 없다. 첫 ADR을 쓸 때 템플릿과 함께 만든다 — `adr-new` 스킬이 안내한다.
+- `docs/adr/`에 템플릿(`0000-adr-template.md`)만 있고 ADR은 아직 없다. 첫 번호는 `0001`,
+  파일명은 영문 슬러그다 — `adr-new` 스킬이 안내한다.
