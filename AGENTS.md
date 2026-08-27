@@ -54,11 +54,12 @@ cd apps/telemetry-processor && pip install -r requirements.txt
 - **토큰 해시는 HMAC-SHA256(`TOKEN_HASH_SECRET`)이다.** backend가 같은 키·같은 연산으로 발급하므로
   **한쪽만 고치는 PR을 열지 않는다** (`../docs/contracts/enrollment-api.md` §4).
 - **신원 전파 3요소**(`include_metadata` · `headers_setter` · `batch.metadata_keys`)는
-  이 레포의 dev 설정에는 있고 **`infra/config/otel-collector.yaml`에는 없다.**
-  이 드리프트가 ClickHouse의 `tenant_id`·`installation_id`를 빈 문자열로 만든다
-  (`../docs/contracts/telemetry-ingest.md` §5 B4). **collector 설정을 고칠 때는 두 파일을 함께 본다.**
+  이 레포의 dev 설정과 **`infra/config/otel-collector.yaml` 양쪽에 있다** — PROJ-77(infra #6)로 맞췄다.
+  한쪽만 고쳐 다시 어긋나면 ClickHouse의 `tenant_id`·`installation_id`가 빈 문자열이 된다.
+  **collector 설정을 고칠 때는 두 파일을 함께 본다.**
 - **`sql/rds/schema.sql`을 고쳐서 스키마를 바꾸지 않는다.** backend Flyway를 고친다.
   시드의 초대 코드 pepper(`dev-only-invite-pepper`)도 backend의 무염 SHA-256과 어긋나 있다.
 - `enrollment` 스키마에 **쓰지 않는다.** 읽기 전용 소비자다.
-- 알려진 결함은 `../docs/contracts/telemetry-ingest.md` §5에 모여 있다 (B3·B4·M2~M6·M11·M12).
+- 알려진 결함은 `../docs/contracts/telemetry-ingest.md` §5에 모여 있다 (B3·M2~M6·M11·M12).
+  **B4(배포 collector 설정 드리프트)는 PROJ-77로 해소됐다. 문서 쪽 표는 아직 갱신 전이다.**
 - `docs/adr/`가 없다. 첫 ADR을 쓸 때 템플릿과 함께 만든다 — `adr-new` 스킬이 안내한다.
