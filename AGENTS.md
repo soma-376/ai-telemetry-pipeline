@@ -71,7 +71,8 @@ cd apps/telemetry-processor && pip install -r requirements.txt
   DDL(V2·V3 부분 유니크 인덱스 포함)과 시드의 초대 코드 해시(무염 SHA-256)는 PROJ-80에서
   backend와 맞췄다. backend 마이그레이션이 늘면 이 사본도 함께 동기화한다.
 - `enrollment` 스키마에 **쓰지 않는다.** 읽기 전용 소비자다.
-- 알려진 결함은 `../docs/contracts/telemetry-ingest.md` §5에 모여 있다 (B3·M2~M6·M11·M12).
-  **B4(배포 collector 설정 드리프트)는 PROJ-77로 해소됐다. 문서 쪽 표는 아직 갱신 전이다.**
+- 알려진 결함은 `../docs/contracts/telemetry-ingest.md` §5에 모여 있다 (B3·M2·M3·M5·M6·M11·M12).
+  **B4(배포 collector 설정 드리프트)는 PROJ-77로, M4(RDS 장애 400 분류)는 PROJ-80 코드 수정으로
+  해소됐고 허브 표에도 반영됐다.**
 - `docs/adr/`에 템플릿(`0000-adr-template.md`)과 ADR 6건(`0001`–`0006`, PROJ-80에서 README 산문의
   결정을 승격)이 있다. **파일명은 한국어 슬러그다** — `adr-new` 스킬이 안내한다.
