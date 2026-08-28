@@ -70,6 +70,8 @@ cd apps/telemetry-processor && pip install -r requirements.txt
 - **`sql/rds/schema.sql`을 고쳐서 스키마를 바꾸지 않는다.** backend Flyway를 고친다.
   DDL(V2·V3 부분 유니크 인덱스 포함)과 시드의 초대 코드 해시(무염 SHA-256)는 PROJ-80에서
   backend와 맞췄다. backend 마이그레이션이 늘면 이 사본도 함께 동기화한다.
+  **후속** — `seed.sql`의 manifest endpoint(`:4316`)를 compose가 주입하는 형태(initdb `.sh` 전환)로
+  바꿔 backend `LocalSeeder` 설정값과 한 곳에서 정의되게 한다(`../docs/contracts/enrollment-api.md` §6 M1).
 - `enrollment` 스키마에 **쓰지 않는다.** 읽기 전용 소비자다.
 - 알려진 결함은 `../docs/contracts/telemetry-ingest.md` §5에 모여 있다 (B3·M2·M3·M5·M6·M11·M12).
   **B4(배포 collector 설정 드리프트)는 PROJ-77로, M4(RDS 장애 400 분류)는 PROJ-80 코드 수정으로
