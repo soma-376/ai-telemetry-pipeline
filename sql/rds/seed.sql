@@ -53,11 +53,12 @@ INSERT INTO invitations (id, tenant_id, target_member_id, created_by_member_id, 
   ('d0000004-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'a0000004-0000-0000-0000-000000000004', 'a0000001-0000-0000-0000-000000000001', 'invite-hash-dave',      NULL,                               TIMESTAMPTZ '2026-12-31T00:00:00Z', NULL);
 
 -- ---- e2e 초대 (실사용 가능) ----
--- code_hash = HMAC-SHA256('dev-only-invite-pepper', 'E2E-INVITE-0001')  (config.invitePepper 기본값)
+-- code_hash = SHA-256('E2E-INVITE-0001') — 무염 해시. backend 명세 §4.4 와 같은 방식이다
+-- (기존 HMAC pepper('dev-only-invite-pepper') 방식은 backend 와 어긋나 PROJ-80 에서 맞췄다).
 -- 미사용·미폐기·미만료 → `pulsemetry enroll --invite E2E-INVITE-0001 --server <enroll-server>` 로 1회 소모.
 -- 대상 tenant=Acme(활성 manifest 보유). enroll 이 installation·credential·telemetry_token 을 생성한다.
 INSERT INTO invitations (id, tenant_id, target_member_id, created_by_member_id, code_hash, used_at, expires_at, revoked_at) VALUES
-  ('d00000e2-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'a0000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000001', 'd284b584f34683aa78b46e9ddaf19cca97f726046d73d36f3ff3d8288af5ec67', NULL, TIMESTAMPTZ '2027-12-31T00:00:00Z', NULL);
+  ('d00000e2-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'a0000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000001', '4b8351aebf9da756664abbd74edc78df75fe878f43992b76a00ebcbd5f05a8d5', NULL, TIMESTAMPTZ '2027-12-31T00:00:00Z', NULL);
 
 -- ---- installations ----
 -- inst-alice, inst-bob: active. inst-alice-old: 폐기된 두 번째 기기(revoked).
