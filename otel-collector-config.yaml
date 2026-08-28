@@ -1,3 +1,7 @@
+# dev(in-repo) collector 설정 — 배포 설정은 infra/config/otel-collector.yaml 이 소유한다(두 벌이 의도된 구성).
+# 신원 전파 3요소(include_metadata · headers_setter/pulsemetry_tenant · batch.metadata_keys)는
+# auth-proxy 신원 헤더 전파의 전제이며 두 파일에서 반드시 같은 값이어야 한다 — 함께 바꾼다.
+# 한쪽만 고치면 ClickHouse 의 tenant_id·installation_id 가 빈 문자열이 된다 (허브 telemetry-ingest.md §4).
 receivers:
   otlp:
     protocols:
