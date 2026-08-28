@@ -36,7 +36,8 @@ sql/rds/                    dev 부트스트랩 DDL·시드 — 진실원이 아
 **레포의 향방** — 이 레포를 backend로 통째 병합하는 제안(backend ADR 0006)은 **기각됐다(Rejected).**
 레포 2개 체제가 유지되고 Python 구현도 유지된다. 다만 **collector는 backend로 이관 예정**이며
 (backend ADR 0007, 도착지 `:apps:telemetry-ingest`) 그때 collector config 소유권이 함께 이동한다.
-전체 이관은 Python·Kotlin 성능 비교 목적의 재논의 여지만 남아 있다. 결정 원문은 backend ADR 0006(허브 이관 예정).
+전체 이관은 Python·Kotlin 성능 비교 목적의 재논의 여지만 남아 있다.
+결정 원문은 허브 ADR 0003(`../docs/adr/0003-telemetry-pipeline-repo-boundary.md`)이다.
 
 ## ⚠️ 문서 상태
 
