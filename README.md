@@ -145,6 +145,8 @@ payload 만 각자 갖는다:
 
 - **토큰 발급** — `pulsemetry-backend`. 이 레포는 검증만 한다.
 - **`enrollment` 스키마 DDL 의 진실원** — `pulsemetry-backend` 의 Flyway.
+- 이 레포를 backend 로 통째 병합하는 제안(backend ADR 0006)은 **기각됐다** — 레포 2개 체제 유지.
+  단 collector 는 backend 로 이관 예정이다(backend ADR 0007).
 - **배포 collector 설정과 모든 AWS 리소스** — `infra`.
 - 세션을 세부작업으로 분해하고 토큰을 귀속시키는 **분석·리포트 계층** — 이 레포 범위 밖이다.
   적재된 `enriched_events` 를 읽는 다운스트림이 맡는다.

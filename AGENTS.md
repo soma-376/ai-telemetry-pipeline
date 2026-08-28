@@ -33,6 +33,11 @@ sql/rds/                    dev 부트스트랩 DDL·시드 — 진실원이 아
 - **enrollment 스키마 DDL의 진실원** → `pulsemetry-backend`의 Flyway. `sql/rds/schema.sql`은 dev 편의용이다
 - **배포 collector 설정** → `infra/config/otel-collector.yaml`. ECS가 실제로 기동하는 건 그쪽이다
 
+**레포의 향방** — 이 레포를 backend로 통째 병합하는 제안(backend ADR 0006)은 **기각됐다(Rejected).**
+레포 2개 체제가 유지되고 Python 구현도 유지된다. 다만 **collector는 backend로 이관 예정**이며
+(backend ADR 0007, 도착지 `:apps:telemetry-ingest`) 그때 collector config 소유권이 함께 이동한다.
+전체 이관은 Python·Kotlin 성능 비교 목적의 재논의 여지만 남아 있다. 결정 원문은 backend ADR 0006(허브 이관 예정).
+
 ## ⚠️ 문서 상태
 
 README와 `docs/` 4종의 **코드 경로·구조 서술은 PROJ-79에서 `apps/` 배치에 맞췄다.**
@@ -62,9 +67,10 @@ cd apps/telemetry-processor && pip install -r requirements.txt
   한쪽만 고쳐 다시 어긋나면 ClickHouse의 `tenant_id`·`installation_id`가 빈 문자열이 된다.
   **collector 설정을 고칠 때는 두 파일을 함께 본다.**
 - **`sql/rds/schema.sql`을 고쳐서 스키마를 바꾸지 않는다.** backend Flyway를 고친다.
-  시드의 초대 코드 pepper(`dev-only-invite-pepper`)도 backend의 무염 SHA-256과 어긋나 있다.
+  DDL(V2·V3 부분 유니크 인덱스 포함)과 시드의 초대 코드 해시(무염 SHA-256)는 PROJ-80에서
+  backend와 맞췄다. backend 마이그레이션이 늘면 이 사본도 함께 동기화한다.
 - `enrollment` 스키마에 **쓰지 않는다.** 읽기 전용 소비자다.
 - 알려진 결함은 `../docs/contracts/telemetry-ingest.md` §5에 모여 있다 (B3·M2~M6·M11·M12).
   **B4(배포 collector 설정 드리프트)는 PROJ-77로 해소됐다. 문서 쪽 표는 아직 갱신 전이다.**
-- `docs/adr/`에 템플릿(`0000-adr-template.md`)만 있고 ADR은 아직 없다. 첫 번호는 `0001`,
-  파일명은 영문 슬러그다 — `adr-new` 스킬이 안내한다.
+- `docs/adr/`에 템플릿(`0000-adr-template.md`)과 ADR 6건(`0001`–`0006`, PROJ-80에서 README 산문의
+  결정을 승격)이 있다. **파일명은 한국어 슬러그다** — `adr-new` 스킬이 안내한다.
