@@ -54,7 +54,7 @@ INSERT INTO invitations (id, tenant_id, target_member_id, created_by_member_id, 
 
 -- ---- e2e 초대 (실사용 가능) ----
 -- code_hash = SHA-256('E2E-INVITE-0001') — 무염 해시. backend 명세 §4.4 와 같은 방식이다
--- (기존 HMAC pepper('dev-only-invite-pepper') 방식은 backend 와 어긋나 PROJ-80 에서 맞췄다).
+-- (기존 HMAC pepper('dev-only-invite-pepper') 방식은 backend 와 어긋나 PROJ-79 에서 맞췄다).
 -- 미사용·미폐기·미만료 → `pulsemetry enroll --invite E2E-INVITE-0001 --server <enroll-server>` 로 1회 소모.
 -- 대상 tenant=Acme(활성 manifest 보유). enroll 이 installation·credential·telemetry_token 을 생성한다.
 INSERT INTO invitations (id, tenant_id, target_member_id, created_by_member_id, code_hash, used_at, expires_at, revoked_at) VALUES
