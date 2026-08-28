@@ -31,7 +31,8 @@ CLI 툴 ──OTLP/HTTP──▶ auth-proxy ──▶ collector ──┬─ fil
   `infra/config/otel-collector.yaml` 은 같은 값을 유지해야 한다** — 배포 설정의 소유는 `infra` 다.
 - **원본 아카이브** — collector 가 resource 의 `service.name` 을 기준으로 제품별 파일에 append 한다.
   아카이브에서 backfill 하는 리더는 지금 없다.
-- 리시버가 잠깐 죽거나 RDS/ClickHouse 장애로 503 을 돌려줘도 collector 의 재시도 큐가 흡수한다.
+- 리시버가 잠깐 죽거나 RDS/ClickHouse 장애로 503 을 돌려줘도 collector 의 재시도 큐가 흡수한다 —
+  단 큐는 메모리 큐라서 collector 프로세스가 살아 있고 큐가 차지 않은 동안만이다(`docs/data-gaps-and-schema-risks.md` §1.3).
 
 ## 실행
 
@@ -125,9 +126,9 @@ payload 만 각자 갖는다:
 2. **토큰 합산은 `Tokens.billable`(input + output + cache_read + cache_create)로만.**
    `reasoning`(Codex reasoning_output, Gemini thoughts)과 `tool`(Gemini)은 `output` 의 부분집합일 수
    있어 더하면 이중계산이다. `total_reported` 는 검산 전용이다.
-3. **`call_id` 는 조인 키다.** Claude Code 만 `tool_use_id` 를 준다. Codex 는 없어서 어댑터가
-   합성하고(`call_id_synthesized=True`), `_pair_call_ids()` 가 세션 내 "같은 도구명의 직전 미결 승인"
-   과 짝지어 tool_decision ↔ tool_call 을 잇는다. 수락률 KPI 가 이 조인에 걸려 있다.
+3. **`call_id` 는 조인 키다.** Claude Code 는 `tool_use_id` 를 그대로 옮기고, 없으면 합성으로 복구한다.
+   Codex 는 대응 키가 없어 항상 합성한다(`_ingest.call_id_inferred=True`). `pair_call_ids()` 가 세션 내
+   "같은 도구명의 직전 미결 승인" 과 짝지어 tool_decision ↔ tool_call 을 잇는다. 수락률 KPI 가 이 조인에 걸려 있다.
 
 ## 한계 (설계상 감수 또는 미완)
 

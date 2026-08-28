@@ -38,7 +38,7 @@ Enrichment
   "envelope": {
     "identity": {
       "tenant_id": "string | null",
-      "user_id": "string | null",
+      "member_id": "string | null",
       "vendor_email": "string | null",
       "vendor_account_id": "string | null"
     },
@@ -66,7 +66,7 @@ Enrichment
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `identity.tenant_id` | `string \| null` | 리소스의 `tenant.id` |
-| `identity.user_id` | `string \| null` | 파이프라인에서 사용하는 정규화 사용자 식별자 |
+| `identity.member_id` | `string \| null` | 파이프라인에서 사용하는 정규화 사용자 식별자 (현재는 클라이언트 자칭 폴백 — 허브 telemetry-ingest §5 M2) |
 | `identity.vendor_email` | `string \| null` | 벤더가 제공한 이메일 |
 | `identity.vendor_account_id` | `string \| null` | 벤더가 제공한 계정 식별자 |
 | `client.product` | `string` | 현재 `codex` 또는 `claude_code` |

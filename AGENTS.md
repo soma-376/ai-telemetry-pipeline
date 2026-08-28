@@ -33,7 +33,7 @@ sql/rds/                    dev 부트스트랩 DDL·시드 — 진실원이 아
 - **enrollment 스키마 DDL의 진실원** → `pulsemetry-backend`의 Flyway. `sql/rds/schema.sql`은 dev 편의용이다
 - **배포 collector 설정** → `infra/config/otel-collector.yaml`. ECS가 실제로 기동하는 건 그쪽이다
 
-**레포의 향방** — 이 레포를 backend로 통째 병합하는 제안(backend ADR 0006)은 **기각됐다(Rejected).**
+**레포의 향방** — 이 레포를 backend로 통째 병합하는 제안(backend ADR 0006)은 **기각으로 닫혔다(`Superseded by 허브 ADR 0003`).**
 레포 2개 체제가 유지되고 Python 구현도 유지된다. 다만 **collector는 backend로 이관 예정**이며
 (backend ADR 0007, 도착지 `:apps:telemetry-ingest`) 그때 collector config 소유권이 함께 이동한다.
 전체 이관은 Python·Kotlin 성능 비교 목적의 재논의 여지만 남아 있다.

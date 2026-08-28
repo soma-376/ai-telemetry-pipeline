@@ -12,9 +12,10 @@ Accepted
 
 ## Decision
 
-- **`call_id` 를 툴 신호의 조인 키로 쓴다.** Claude Code 는 `tool_use_id` 를 그대로 옮긴다.
-- Codex 는 어댑터가 `call_id` 를 **합성**하고 `call_id_synthesized=True` 를 함께 남긴다.
-  `_pair_call_ids()` 가 세션 내 "같은 도구명의 직전 미결 승인" 휴리스틱으로
+- **`call_id` 를 툴 신호의 조인 키로 쓴다.** Claude Code 는 `tool_use_id` 를 그대로 옮기고,
+  없으면 합성으로 복구한다(`synth_call_id` — `adapters/claude_code/logs.py`).
+- Codex 는 어댑터가 `call_id` 를 **합성**하고 `_ingest.call_id_inferred=True` 를 함께 남긴다.
+  `pair_call_ids()` 가 세션 내 "같은 도구명의 직전 미결 승인" 휴리스틱으로
   tool_decision ↔ tool_call 을 짝짓는다.
 
 ## Alternatives
@@ -27,7 +28,7 @@ Accepted
 ### B. 타임스탬프 근접만으로 짝짓는다
 - 장점: 합성 키 관리가 없다.
 - 단점: 병렬 도구 호출에서 쉽게 어긋나고, 어긋남을 식별할 표식도 없다.
-- 탈락 이유: 휴리스틱을 쓰더라도 합성 여부(`call_id_synthesized`)가 데이터에 남아야 한다.
+- 탈락 이유: 휴리스틱을 쓰더라도 합성 여부(`call_id_inferred`)가 데이터에 남아야 한다.
 
 ## Consequences/Tradeoffs
 
@@ -36,7 +37,7 @@ Accepted
 
 ### Negative
 - 합성 키는 휴리스틱이라 오결합이 가능하다.
-  - 완화책: `call_id_synthesized=True` 로 합성 건을 식별할 수 있어, 지표 소비자가 신뢰 구간을 가를 수 있다.
+  - 완화책: `call_id_inferred=True` 로 합성 건을 식별할 수 있어, 지표 소비자가 신뢰 구간을 가를 수 있다.
 
 ## Follow-up
 
