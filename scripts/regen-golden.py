@@ -30,11 +30,13 @@ normalizer 의 출력을 **언어 중립 JSON** 으로 고정한다. 입력과 �
 
 ## 사용법
 
-    scripts/test-processor.sh ../../scripts/regen-golden.py   # 는 동작하지 않는다
-    docker run --rm -v "$PWD:/w" -w /w/apps/telemetry-processor python:3.13-slim \
-        python /w/scripts/regen-golden.py
+레포 루트에서:
+
+    docker run --rm -v "$PWD:/w" -w /w/apps/telemetry-processor \
+        python:3.13-slim python /w/scripts/regen-golden.py
 
 인자 없이 돌리면 `tests/fixtures/` 아래 모든 `*.otlp.jsonl` 을 다시 굽는다.
+경로를 인자로 주면 그 입력만 다시 굽는다.
 """
 from __future__ import annotations
 
