@@ -1,7 +1,7 @@
 # Diagnostics
 
 ```text
-src/diagnostics/
+apps/telemetry-processor/diagnostics/
 ├─ __init__.py                 # 외부에 공개하는 진단 클래스와 타입
 ├─ engine.py                   # 이슈 탐지, reason 판별, 필터링
 ├─ model.py                    # Observation, Issue, Finding, DiagnosticEvent
@@ -10,11 +10,7 @@ src/diagnostics/
 ├─ aggregating_reporter.py     # 진단 이벤트의 인메모리 집계와 snapshot
 └─ snapshot_cli.py             # 실행 중인 집계를 타임스탬프 JSON으로 저장
 
-tests/diagnostics/
-├─ test_engine.py              # 이슈·reason·중복 억제 정책 검증
-├─ test_tracking.py            # 키 접근과 mapping 결과 추적 검증
-├─ test_aggregating_reporter.py # count, breakdown, 동시성 검증
-└─ test_snapshot_cli.py        # snapshot 조회와 파일 저장 검증
+(테스트 스위트는 PROJ-40 에서 삭제됨 — 복원 과제는 docs/production-readiness.md P1-8)
 ```
 
 ## 목적

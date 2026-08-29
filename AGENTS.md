@@ -33,11 +33,21 @@ sql/rds/                    dev 부트스트랩 DDL·시드 — 진실원이 아
 - **enrollment 스키마 DDL의 진실원** → `pulsemetry-backend`의 Flyway. `sql/rds/schema.sql`은 dev 편의용이다
 - **배포 collector 설정** → `infra/config/otel-collector.yaml`. ECS가 실제로 기동하는 건 그쪽이다
 
-## ⚠️ 스테일 문서
+**레포의 향방** — 이 레포를 backend로 통째 병합하는 제안(backend ADR 0006)은 **기각으로 닫혔다(`Superseded by 허브 ADR 0003`).**
+레포 2개 체제가 유지되고 Python 구현도 유지된다. 다만 **collector는 backend로 이관 예정**이며
+(backend ADR 0007, 도착지 `:apps:telemetry-ingest`) 그때 collector config 소유권이 함께 이동한다.
+전체 이관은 Python·Kotlin 성능 비교 목적의 재논의 여지만 남아 있다.
+결정 원문은 허브 ADR 0003(`../docs/adr/0003-telemetry-pipeline-repo-boundary.md`)이다.
 
-README와 `docs/`의 상당 부분이 **PROJ-52 이전 `src/` 구조 기준**이라 현재 `apps/` 구조와 맞지 않는다.
-auth-proxy의 존재 자체가 README에 없고, "Codex traces 미구현" 서술은 이미 구현돼 반대로 스테일이다.
-**구조를 알아야 하면 코드와 `../docs/architecture/repos.md`를 본다.**
+## ⚠️ 문서 상태
+
+README와 `docs/` 4종의 **코드 경로·구조 서술은 PROJ-79에서 `apps/` 배치에 맞췄다.**
+README가 소개하던 "세부작업 분류 + 토큰 귀속 분석기" CLI는 이 레포에 없어서 걷어냈고,
+데이터 흐름에 빠져 있던 auth-proxy를 넣었다. Codex traces 어댑터를 스텁이라 적은 서술 3곳도 고쳤다.
+
+아직 코드와 대조하지 않은 것은 `docs/normalizer.md`·`docs/diagnostics.md`의 **필드 단위 정의**다.
+경로·지원 이벤트 표·어댑터 등록은 확인했지만 payload 필드 하나하나까지는 보지 않았다.
+**필드를 신뢰해야 하는 작업이면 코드를 먼저 본다.**
 
 ## 명령어
 
@@ -58,8 +68,13 @@ cd apps/telemetry-processor && pip install -r requirements.txt
   한쪽만 고쳐 다시 어긋나면 ClickHouse의 `tenant_id`·`installation_id`가 빈 문자열이 된다.
   **collector 설정을 고칠 때는 두 파일을 함께 본다.**
 - **`sql/rds/schema.sql`을 고쳐서 스키마를 바꾸지 않는다.** backend Flyway를 고친다.
-  시드의 초대 코드 pepper(`dev-only-invite-pepper`)도 backend의 무염 SHA-256과 어긋나 있다.
+  DDL(V2·V3 부분 유니크 인덱스 포함)과 시드의 초대 코드 해시(무염 SHA-256)는 PROJ-79에서
+  backend와 맞췄다. backend 마이그레이션이 늘면 이 사본도 함께 동기화한다.
+  **후속** — `seed.sql`의 manifest endpoint(`:4316`)를 compose가 주입하는 형태(initdb `.sh` 전환)로
+  바꿔 backend `LocalSeeder` 설정값과 한 곳에서 정의되게 한다(`../docs/contracts/enrollment-api.md` §6 M1).
 - `enrollment` 스키마에 **쓰지 않는다.** 읽기 전용 소비자다.
-- 알려진 결함은 `../docs/contracts/telemetry-ingest.md` §5에 모여 있다 (B3·M2~M6·M11·M12).
-  **B4(배포 collector 설정 드리프트)는 PROJ-77로 해소됐다. 문서 쪽 표는 아직 갱신 전이다.**
-- `docs/adr/`가 없다. 첫 ADR을 쓸 때 템플릿과 함께 만든다 — `adr-new` 스킬이 안내한다.
+- 알려진 결함은 `../docs/contracts/telemetry-ingest.md` §5에 모여 있다 (B3·M2·M3·M5·M6·M11·M12).
+  **B4(배포 collector 설정 드리프트)는 PROJ-77로, M4(RDS 장애 400 분류)는 PROJ-79 코드 수정으로
+  해소됐고 허브 표에도 반영됐다.**
+- `docs/adr/`에 템플릿(`0000-adr-template.md`)과 ADR 6건(`0001`–`0006`, PROJ-79에서 README 산문의
+  결정을 승격)이 있다. **파일명은 한국어 슬러그다** — `adr-new` 스킬이 안내한다.

@@ -31,9 +31,9 @@ TABLE = "enriched_events"
 DDL_PATH = Path(__file__).resolve().parent / "sql" / "clickhouse" / "schema.sql"
 
 # 적재 컬럼 화이트리스트. 이 순서/집합을 초과하지 않는다.
-# 슬림 스키마: 검증 조인 키(installation_id) + raw + annotations 만 승격한다.
-# 사원/부서 등 org 정보는 컬럼으로 박지 않고 query-time 조인으로 해석한다
-# (installation_id + ts → enrollment.installation → employee → assignment as-of).
+# 슬림 스키마: 검증 조인 키(installation_id) + 얇은 공통 컬럼 + raw + annotations.
+# org 승격 컬럼은 team_ids_as_of 하나뿐이다(ADR 0006) — org provider 가 ingest 시점에
+# enrollment.installations → team_memberships → teams 를 as-of 조인해 채운다.
 WHITELIST_COLUMNS = [
     "event_id", "ts", "tenant_id", "installation_id",
     "signal", "product", "team_ids_as_of", "raw_json", "enrichment_json",
@@ -82,8 +82,8 @@ def ensure_schema(url: Optional[str] = None, database: Optional[str] = None) -> 
 def to_row(it: Enriched) -> Dict[str, Any]:
     """Enriched → 화이트리스트 컬럼 dict(슬림).
 
-    org 정보(사원/부서/회사명)는 승격하지 않는다 — installation_id + ts 만 있으면
-    조회 계층에서 as-of 조인으로 재구성 가능하다. installation_id 는 프로퍼티를 두지 않고
+    org 승격은 team_ids_as_of 하나뿐이다(ADR 0006) — 그 외 provider 산출물은
+    enrichment_json 으로만 적재한다. installation_id 는 프로퍼티를 두지 않고
     envelope 에서 직접 읽는다(Normalized 에 이미 있음)."""
     ts = it.timestamp
     identity = it.event.envelope.identity

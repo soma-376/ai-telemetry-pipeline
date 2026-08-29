@@ -1,6 +1,11 @@
 -- enrollment 스키마 — Pulsemetry 온보딩/신원/계약 모델(mock RDS).
 -- compose 가 /docker-entrypoint-initdb.d 로 마운트해 최초 초기화 시 자동 적용(01-schema → 02-seed).
--- 볼륨이 없으므로 down 후 up 마다 재적용된다 → 결정론적 리셋(권위 소스는 이 파일).
+-- 볼륨이 없으므로 down 후 up 마다 재적용된다 → 결정론적 리셋
+--   (dev compose 초기화의 기준 파일이라는 뜻이며, 스키마의 진실원이 아니다.
+--    이 파일은 로컬 테스트·스키마 확인용 사본이다. enrollment 스키마 DDL 의 진실원은
+--    pulsemetry-backend 의 Flyway 다 — backend ADR 0004·0009,
+--    pulsemetry-backend/libs/enrollment-persistence/src/main/resources/db/migration/.
+--    스키마를 바꿔야 하면 이 파일이 아니라 backend Flyway 를 고친다.)
 -- 스키마를 통째로 DROP 후 재생성한다(enum 타입까지 깨끗이 리셋).
 -- 이력(소급 변경 금지) 테이블은 기존 row 를 수정하지 않고 *_at 구간으로 시점 이력을 남긴다.
 
@@ -144,6 +149,10 @@ CREATE TABLE telemetry_tokens (
 );
 CREATE INDEX ON telemetry_tokens (installation_id);
 CREATE INDEX ON telemetry_tokens (installation_id, revoked_at);
+-- backend Flyway V3 동기화 — installation 당 활성 토큰은 최대 하나 (재발급 계약의 최종 방어선).
+CREATE UNIQUE INDEX ux_telemetry_tokens_installation_active
+    ON telemetry_tokens (installation_id)
+    WHERE revoked_at IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- 수집/privacy 정책 (manifest)
@@ -162,6 +171,10 @@ CREATE TABLE manifests (
     UNIQUE (tenant_id, version)
 );
 CREATE INDEX ON manifests (tenant_id, is_active);
+-- backend Flyway V2 동기화 — tenant 당 활성 manifest 는 최대 하나 (dbml 에 없는 의도적 추가, SCHEMA-DRIFT).
+CREATE UNIQUE INDEX ux_manifests_tenant_active
+    ON manifests (tenant_id)
+    WHERE is_active;
 
 -- installation 에 배포된 manifest 버전과 적용 여부.
 CREATE TABLE installation_manifest_assignments (

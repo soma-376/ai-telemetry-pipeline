@@ -5,7 +5,8 @@
 Normalizer는 Codex와 Claude Code의 OTLP 데이터를 공통 스키마로 변환한다.  
 `processor.process()`는 정규화에 성공한 이벤트만 `enrichment.enrich()`에 전달한다.
 
-현재 enrichment는 이벤트를 수정하지 않는 pass-through 단계이므로, enrichment가 받는 데이터 타입은 아래와 같다.
+enrichment는 스트림 구조를 보존한 채 org 필드(`team_ids_as_of`)와 annotations를 채운다(행 드롭 없음).
+enrichment가 받는 데이터 타입은 아래와 같다.
 
 ```python
 Normalized = NormalizedLog | NormalizedSpan | NormalizedMetric
@@ -38,7 +39,7 @@ Enrichment
   "envelope": {
     "identity": {
       "tenant_id": "string | null",
-      "user_id": "string | null",
+      "member_id": "string | null",
       "vendor_email": "string | null",
       "vendor_account_id": "string | null"
     },
@@ -66,7 +67,7 @@ Enrichment
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `identity.tenant_id` | `string \| null` | 리소스의 `tenant.id` |
-| `identity.user_id` | `string \| null` | 파이프라인에서 사용하는 정규화 사용자 식별자 |
+| `identity.member_id` | `string \| null` | 파이프라인에서 사용하는 정규화 사용자 식별자 (현재는 클라이언트 자칭 폴백 — 허브 telemetry-ingest §5 M2) |
 | `identity.vendor_email` | `string \| null` | 벤더가 제공한 이메일 |
 | `identity.vendor_account_id` | `string \| null` | 벤더가 제공한 계정 식별자 |
 | `client.product` | `string` | 현재 `codex` 또는 `claude_code` |
@@ -308,7 +309,11 @@ metric은 Codex와 Claude Code 모두 동일한 `MetricPoint` 구조로 전달�
 | log | `codex.user_prompt` | `user_prompt` |
 | log | `codex.conversation_starts` | `lifecycle(session_start)` |
 | metric | `codex.*` metric | `NormalizedMetric` |
-| span | `codex.*` span | 현재 미지원 |
+| span | `codex.conversation_starts` | `turn` + `lifecycle(session_start)` |
+| span | `codex.api_request` | `llm_request` |
+| span | `codex.tool_result` | `tool_execution` |
+| span | `codex.tool_decision` | `tool_gate` |
+| span | 그 밖의 `codex.*` span | 전달하지 않는다 (어댑터가 `None` 반환) |
 
 `codex.sse_event`에 token 정보가 없으면 현재 `type=other`, `payload=null`인
 `NormalizedLog`로 enrichment에 전달된다. diagnostics는 이를
@@ -348,7 +353,7 @@ metric은 Codex와 Claude Code 모두 동일한 `MetricPoint` 구조로 전달�
 ## 코드 기준 위치
 
 ```text
-src/normalizer/
+apps/telemetry-processor/normalizer/
 ├─ normalize.py               # 어댑터 선택, diagnostics 검사, call_id 연결, 이벤트 방출
 ├─ model/
 │  ├─ common.py               # Envelope와 공통 payload
@@ -360,10 +365,15 @@ src/normalizer/
 ├─ adapters/
 │  ├─ codex/                  # Codex → 공통 스키마
 │  └─ claude_code/            # Claude Code → 공통 스키마
-└─ common/
-   ├─ envelope.py             # 공통 envelope와 record_id 생성
-   └─ metric.py               # 공통 metric 변환
+├─ common/
+│  ├─ envelope.py             # 공통 envelope와 record_id 생성
+│  ├─ metric.py               # 공통 metric 변환
+│  ├─ context.py              # 수집 컨텍스트(IngestContext)
+│  ├─ call_id.py              # call_id 합성과 페어링
+│  └─ serialization.py        # JSON 직렬화 규칙
+├─ otlp/                      # OTLP 파싱 공용 유틸. readers.py = 3 시그널 리더
+└─ pricing.py                 # 토큰 기반 비용 추정 (단가는 자리표시자)
 
-src/enrichment/enrich.py      # 현재 Normalized 스트림을 변경 없이 전달
-src/processor.py              # normalize와 enrichment 연결
+apps/telemetry-processor/enrichment/enrich.py   # Normalized 스트림에 조직 정보를 결합해 Enriched 로 만든다
+apps/telemetry-processor/processor.py           # normalize 와 enrichment 연결
 ```

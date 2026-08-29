@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Tuple
 
 import psycopg
 
+from ..errors import BackendUnavailable
 from ..model import Enriched
 from .base import EnrichmentProvider
 
@@ -53,6 +54,11 @@ class OrgProvider(EnrichmentProvider):
         return {"team_ids": team_ids}
 
     def _load(self, installation_id: str) -> List[Interval]:
-        with psycopg.connect(self._dsn) as conn, conn.cursor() as cur:
-            cur.execute(_MEMBERSHIP_SQL, (installation_id,))
-            return [(row[0], row[1], row[2]) for row in cur.fetchall()]
+        try:
+            with psycopg.connect(self._dsn) as conn, conn.cursor() as cur:
+                cur.execute(_MEMBERSHIP_SQL, (installation_id,))
+                return [(row[0], row[1], row[2]) for row in cur.fetchall()]
+        except psycopg.OperationalError as exc:
+            # OperationalError 만 잡는다 — 범위를 넓히면 스키마 오류 같은 영구 오류까지
+            # 재시도돼 collector 재시도 큐가 막힌다.
+            raise BackendUnavailable(f"rds unreachable: {exc}") from exc

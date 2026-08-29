@@ -1,6 +1,6 @@
 # 데이터 누락 · 스키마 취약점 정리
 
-전체 소스(`src/`, collector 설정, compose)를 훑은 결과. 심각도 순.
+전체 소스(`apps/`, collector 설정, compose)를 훑은 결과. 심각도 순.
 
 ## 1. 치명적 — 데이터가 실제로 사라지는 경로
 
@@ -67,13 +67,12 @@ decision/call이 교차 페어링**될 수 있다.
 | 3.4 | `otlp_receiver.py:35-38` | Content-Length·gzip 해제 크기 무제한(압축 폭탄), 인증·TLS 없음, `0.0.0.0` 바인드 |
 | 3.5 | `common/metric.py` | `summary` 타입 미처리, `exponentialHistogram`의 positive/negative 버킷 구조 미추출(빈 리스트로 저장) |
 | 3.6 | `docker-compose.dev.yml` | collector 이미지 `latest` — 재현 불가, 파일 exporter 무한 append(로테이션 없음) |
-| 3.7 | README ↔ 코드 드리프트 | README의 `--idle-gap`/`--teams`/`--history` 옵션, `teams.json`, 세그먼트 분해·롤업 기능이 **레포에 존재하지 않음**. `model/SCHEMA.md`는 삭제된 상태 |
+| 3.7 | ~~README ↔ 코드 드리프트~~ **해소(PROJ-79)** | README가 존재하지 않는 CLI 옵션·`teams.json`·세그먼트 분해·롤업을 소개하고 있었다. README를 실제 소유 범위(인증·정규화·적재)로 다시 썼다 |
 
 ## 4. 알려진(의도된) 공백 — 참고
 
 - Codex 매핑은 to-spec, 실데이터 미검증 (토큰 키명 등 diagnostics 집계로 확인 필요)
 - metrics 어댑터는 통과만 시킴 — CC의 라인/커밋/PR/active_time이 전용 이벤트 타입으로 승격 안 됨
   (승격 대상 payload 타입은 아직 미정 — 실제 구현 시 정의한다. 미사용 상태였던 `Artifact` 스키마는 제거됨)
-- Codex traces 어댑터 스텁 (`codex/traces.py`)
 - `pricing.py` 단가는 자리표시자
 - Codex `turn_id` 부재 → 세그먼트는 유휴 갭 휴리스틱 의존
