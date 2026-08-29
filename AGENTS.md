@@ -53,11 +53,22 @@ README가 소개하던 "세부작업 분류 + 토큰 귀속 분석기" CLI는 �
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
-cd apps/auth-proxy && npm ci && npm run typecheck && npm run build   # CI가 하는 것도 이것뿐
+scripts/test-processor.sh                                  # processor 테스트 (Docker python:3.13-slim)
+cd apps/auth-proxy && npm ci && npm run typecheck && npm test
+cd apps/auth-proxy && npm run build                        # 배포 산출물
 cd apps/telemetry-processor && pip install -r requirements.txt
 ```
 
-**레포 테스트가 0개다.** CI는 auth-proxy typecheck/build만 돈다. 변경 시 수동 검증이 필요하다.
+**테스트는 특성화 테스트(characterization test)다** — 현행 동작을 있는 그대로 고정해
+Kotlin 이식(PROJ-74)의 회귀 안전망으로 쓴다. **이상해 보이는 동작도 테스트를 고쳐 맞추지 마라.**
+바꿔야 한다면 그게 의도된 변경인지 먼저 판단하고, 맞다면 golden 을 다시 굽는다
+(`scripts/regen-golden.py`).
+
+`.github/workflows/ci.yml` 이 PR·develop push 양쪽에서 두 앱의 테스트를 돌린다.
+배포(`deploy_dev.yml`)는 `concurrency: deploy-dev` 에 묶여 있어 테스트를 얹지 않는다.
+
+golden fixture 는 `apps/telemetry-processor/tests/fixtures/` 에 입력·기대출력 쌍으로 있다
+(`data/` 는 .gitignore 라 캡처를 복사해 뒀다). 언어 중립 JSON 이라 Kotlin 테스트가 같은 파일을 읽는다.
 
 ## 이 레포에서 특히 조심할 것
 

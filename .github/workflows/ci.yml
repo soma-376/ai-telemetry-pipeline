@@ -1,0 +1,74 @@
+name: CI
+
+# 이 레포에는 지금까지 PR 트리거 워크플로가 없었다(deploy_dev 는 push, 나머지 둘은
+# PR 메타 작업뿐). 테스트 게이트는 배포 워크플로에 얹지 않고 여기서 따로 돈다 —
+# deploy_dev 는 `concurrency: deploy-dev` 에 묶여 있어 테스트가 그 큐를 점유하면
+# 배포가 서로 밀린다.
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+
+# 같은 브랜치에 새 커밋이 오면 앞 실행은 취소한다. 배포와 달리 도중에 끊겨도
+# 남는 상태가 없다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  telemetry-processor:
+    name: telemetry-processor tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # Dockerfile 과 같은 3.13 이다. 로컬은 scripts/test-processor.sh 가
+      # python:3.13-slim 컨테이너로 같은 버전을 맞춘다.
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: apps/telemetry-processor/requirements.txt
+
+      # requirements.txt 는 런타임 의존성 전용이다. 러너가 stdlib unittest 라
+      # 테스트 전용 의존성이 없다 — 여기서 설치하는 psycopg 는 enrichment 가 import 한다.
+      - name: Install runtime dependencies
+        working-directory: apps/telemetry-processor
+        run: pip install -r requirements.txt
+
+      # 로컬(scripts/test-processor.sh)과 같은 명령·같은 작업 디렉터리다.
+      # -t . 로 top-level 을 앱 루트에 고정해야 `from normalizer import ...` 가 풀린다.
+      - name: Run tests
+        working-directory: apps/telemetry-processor
+        run: python -m unittest discover -s tests -t . -v
+
+  auth-proxy:
+    name: auth-proxy typecheck and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/auth-proxy/package-lock.json
+
+      - name: Install, typecheck and test
+        working-directory: apps/auth-proxy
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
