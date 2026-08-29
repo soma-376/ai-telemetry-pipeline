@@ -84,7 +84,7 @@ apps/
       errors.py                 enrichment 단계 예외
       sink_clickhouse.py        ClickHouse HTTP 적재 (stdlib urllib, JSONEachRow)
       providers/                EnrichmentProvider ABC + 자동발견 registry
-        org.py                    회사/부서/사원 as-of 매핑 (RDS 조회, psycopg 지연 import)
+        org.py                    팀 as-of 매핑 — RDS 조회로 team_ids_as_of 를 채운다
         github.py · jira.py · ai_analysis.py    no-op 스텁
 otel-collector-config.yaml  ★ dev(in-repo) collector 설정. 배포 설정은 infra 소유
 sql/rds/ · sql/clickhouse/  dev 부트스트랩 DDL·시드 (진실원 아님)

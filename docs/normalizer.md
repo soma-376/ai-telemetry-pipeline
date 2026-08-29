@@ -5,7 +5,8 @@
 Normalizer는 Codex와 Claude Code의 OTLP 데이터를 공통 스키마로 변환한다.  
 `processor.process()`는 정규화에 성공한 이벤트만 `enrichment.enrich()`에 전달한다.
 
-현재 enrichment는 이벤트를 수정하지 않는 pass-through 단계이므로, enrichment가 받는 데이터 타입은 아래와 같다.
+enrichment는 스트림 구조를 보존한 채 org 필드(`team_ids_as_of`)와 annotations를 채운다(행 드롭 없음).
+enrichment가 받는 데이터 타입은 아래와 같다.
 
 ```python
 Normalized = NormalizedLog | NormalizedSpan | NormalizedMetric
