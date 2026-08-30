@@ -10,11 +10,13 @@ HTTPError 를 폭넓게 잡는다. **이 비대칭은 의도된 결정이다** �
 """
 from __future__ import annotations
 
-import socket
 import threading
 import unittest
+import urllib.error
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from unittest import mock
 
+from enrichment import sink_clickhouse
 from enrichment.errors import BackendUnavailable
 from enrichment.sink_clickhouse import execute
 
@@ -59,13 +61,6 @@ class _StubClickHouse:
         self._thread.join(timeout=5)
 
 
-def _closed_port() -> int:
-    """즉시 닫아 확실히 연결이 거부되는 포트를 하나 얻는다."""
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
-
-
 class ExecuteErrorClassificationTest(unittest.TestCase):
     def test_success_returns_response_body(self) -> None:
         """200 응답은 본문을 문자열로 돌려주는지 검증한다."""
@@ -102,11 +97,19 @@ class ExecuteErrorClassificationTest(unittest.TestCase):
         self.assertEqual(str(caught.exception).count("x"), 500)
 
     def test_unreachable_host_becomes_backend_unavailable(self) -> None:
-        """접속 자체가 안 되는 경우도 BackendUnavailable 이다."""
-        url = f"http://127.0.0.1:{_closed_port()}"
+        """접속 자체가 안 되는 경우도 BackendUnavailable 이다.
 
-        with self.assertRaises(BackendUnavailable) as caught:
-            execute("SELECT 1", url=url)
+        빈 포트를 잡아 두는 대신 urlopen 을 직접 패치한다. bind 후 닫은 포트 번호는
+        connect 사이에 다른 프로세스가 가져갈 수 있어 간헐적으로 어긋난다.
+        """
+        def raise_url_error(*_args, **_kwargs):
+            raise urllib.error.URLError("Connection refused")
+
+        with mock.patch.object(
+            sink_clickhouse.urllib.request, "urlopen", raise_url_error
+        ):
+            with self.assertRaises(BackendUnavailable) as caught:
+                execute("SELECT 1", url="http://127.0.0.1:1")
 
         self.assertIn("clickhouse unreachable", str(caught.exception))
 

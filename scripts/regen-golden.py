@@ -79,6 +79,11 @@ def golden_lines(otlp_path: Path) -> list[str]:
 
 
 def regenerate(otlp_path: Path) -> Path:
+    # 접미사를 확인하지 않으면 `capture.json` 같은 인자에서 replace 가 원래 이름을
+    # 그대로 돌려주어 golden_path 가 입력과 같아지고, 아래 write_text 가 입력 자체를
+    # 덮어쓴다. golden fixture 의 입력은 되살릴 수 없으므로 먼저 막는다.
+    if not otlp_path.name.endswith(".otlp.jsonl"):
+        raise ValueError(f"*.otlp.jsonl 이 아니다: {otlp_path}")
     golden_path = otlp_path.with_name(
         otlp_path.name.replace(".otlp.jsonl", ".normalized.jsonl")
     )
