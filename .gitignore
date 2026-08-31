@@ -13,6 +13,9 @@
 __pycache__/
 *.pyc
 
+# scripts/test-processor.sh 가 컨테이너와 공유하는 pip 캐시
+/.cache/
+
 # OS / editor
 .DS_Store
 *.swp
