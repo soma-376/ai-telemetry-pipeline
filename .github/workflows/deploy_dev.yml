@@ -118,7 +118,7 @@ jobs:
       # 컨텍스트가 레포 루트다. Dockerfile 이 sql/clickhouse/ 를 앱 디렉터리 밖에서 COPY 한다.
       # 캐시는 type=gha 만 쓴다 - 배포 역할에 ECR pull 권한이 없어 type=registry 는 AccessDenied 다.
       - name: Build and push post-processor
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: apps/telemetry-processor/Dockerfile
@@ -133,7 +133,7 @@ jobs:
 
       # 이쪽은 컨텍스트가 앱 디렉터리다. 위 스텝과 비대칭인 것이 정상이다.
       - name: Build and push auth-proxy
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: apps/auth-proxy
           platforms: linux/arm64
